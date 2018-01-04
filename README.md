@@ -1,2 +1,2 @@
 # socks5
-基于 Boost.Asio 实现的 Socks5 代理服务器
+ A C++11 socks5 proxy server based on Libevent

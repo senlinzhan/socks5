@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Emacs backup files
+*~
+
+# CMake dir
+build
