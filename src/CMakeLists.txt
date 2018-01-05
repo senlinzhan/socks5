@@ -7,6 +7,7 @@ set(SRCS
     socks5.cpp
     sockets.cpp
     server.cpp
+    address.cpp
 )
 
 add_executable(socks5 ${SRCS})

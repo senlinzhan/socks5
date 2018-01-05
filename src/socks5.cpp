@@ -3,7 +3,7 @@
  * socks5
  * A C++11 socks5 proxy server based on Libevent 
  *
- * Copyright 2017 Senlin Zhan. All rights reserved.
+ * Copyright 2018 Senlin Zhan. All rights reserved.
  *
  ******************************************************************************/
 

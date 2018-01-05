@@ -1,3 +1,13 @@
+/*******************************************************************************
+ *
+ * socks5
+ * A C++11 socks5 proxy server based on Libevent 
+ *
+ * Copyright 2018 Senlin Zhan. All rights reserved.
+ *
+ ******************************************************************************/
+
+#include "address.hpp"
 #include "sockets.hpp"
 #include "server.hpp"
 
@@ -7,10 +17,15 @@
 void acceptCallback(struct evconnlistener *listener, evutil_socket_t fd,
                     struct sockaddr *address, int socklen, void *arg)
 {
-    char addr[INET_ADDRSTRLEN];
-    auto sin = reinterpret_cast<sockaddr_in *>(address);
-    ::inet_ntop(AF_INET, &sin->sin_addr, addr, INET_ADDRSTRLEN);
-    LOG(INFO) << "Accept new connection from: " << addr;
+    Address addr(address);
+    if (addr.type() != Address::Type::unknown)
+    {
+        LOG(INFO) << "Accept new connection from: " << addr;
+    }
+    else
+    {
+        LOG(ERROR) << "Accept new connection from: unknown address";
+    }
 }
 
 Server::Server(const std::string &host, gflags::int32 port)
@@ -23,8 +38,11 @@ Server::Server(const std::string &host, gflags::int32 port)
     }
 
     auto portStr = std::to_string(port);
-    int listeningSocket = sockets::createListeningSocket(host.c_str(),
-                                                         portStr.c_str());
+    int listeningSocket = createListeningSocket(
+        host.c_str(),
+        portStr.c_str()
+    );
+    
     if (listeningSocket == -1)
     {
         LOG(FATAL) << "failed to create listening socket";
@@ -34,9 +52,10 @@ Server::Server(const std::string &host, gflags::int32 port)
         base_,
         acceptCallback,
         nullptr,
-        LEV_OPT_CLOSE_ON_FREE|LEV_OPT_REUSEABLE,
-        -1, // let libevent choose a good value for the listening backlog
-        listeningSocket);
+        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_EXEC,
+        -1,
+        listeningSocket
+    );
 
     if (listener_ == nullptr)
     {
