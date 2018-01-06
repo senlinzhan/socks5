@@ -12,8 +12,11 @@
 
 #include <gflags/gflags.h>
 
-#include <event2/listener.h>
-#include <event2/bufferevent.h>
+/**
+   Forward declaration
+ **/
+struct event_base;
+struct evconnlistener;
 
 class Server
 {

@@ -10,12 +10,18 @@
 #include "address.hpp"
 #include "sockets.hpp"
 #include "server.hpp"
+#include "tunnel.hpp"
+
+#include <event2/listener.h>
 
 #include <glog/logging.h>
 #include <arpa/inet.h>
 
-void acceptCallback(struct evconnlistener *listener, evutil_socket_t fd,
-                    struct sockaddr *address, int socklen, void *arg)
+/**
+   Called when the server accept new connection
+ **/
+static void acceptCallback(evconnlistener *listener, evutil_socket_t fd,
+                           sockaddr *address, int socklen, void *arg)
 {
     Address addr(address);
     if (addr.type() != Address::Type::unknown)
@@ -26,6 +32,9 @@ void acceptCallback(struct evconnlistener *listener, evutil_socket_t fd,
     {
         LOG(ERROR) << "Accept new connection from: unknown address";
     }
+
+    auto base = evconnlistener_get_base(listener);
+    Tunnel *tunnel = new Tunnel(base, fd);    
 }
 
 Server::Server(const std::string &host, gflags::int32 port)
@@ -65,6 +74,9 @@ Server::Server(const std::string &host, gflags::int32 port)
     }
 }
 
+/**
+   Run the event loop
+ **/
 void Server::run()
 {
     event_base_dispatch(base_);    

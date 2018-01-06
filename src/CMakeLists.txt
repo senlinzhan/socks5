@@ -8,6 +8,8 @@ set(SRCS
     sockets.cpp
     server.cpp
     address.cpp
+    tunnel.cpp
+    protocol.cpp
 )
 
 add_executable(socks5 ${SRCS})
