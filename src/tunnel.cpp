@@ -24,9 +24,28 @@ static void inConnReadCallback(bufferevent *bev, void *arg)
         return;
     }
 
+    auto fd = bufferevent_getfd(bev);
+    
     if (tunnel->state() == Tunnel::State::init)
     {
-        tunnel->initConnWithClient(bev);
+        if (!tunnel->handleAuthentication(bev))
+        {
+            LOG(ERROR) << "Failed to parse authentication protocol for client-" << fd;
+            delete tunnel;
+        }
+    }
+    else if (tunnel->state() == Tunnel::State::authorized)
+    {
+        if (!tunnel->handleRequest(bev))
+        {
+            LOG(ERROR) << "Failed to handle request from client-" << fd;
+            delete tunnel;
+        }
+    }
+    else if (tunnel->state() == Tunnel::State::clientMustClose)
+    {
+        LOG(ERROR) << "At this point the client-" << fd << " shouldn't send any data";
+        delete tunnel;
     }
 }
 
@@ -119,6 +138,11 @@ Tunnel::State Tunnel::state() const
     return state_;
 }
 
+void Tunnel::setState(Tunnel::State state)
+{
+    state_ = state;
+}
+
 Tunnel::~Tunnel()
 {
     LOG(INFO) << "Free client-" << inConnFd_;
@@ -134,7 +158,12 @@ Tunnel::~Tunnel()
     }
 }
 
-void Tunnel::initConnWithClient(bufferevent *bev)
+bool Tunnel::handleAuthentication(bufferevent *bev)
 {
-    protocol_.readClientProtocol(bev);
+    return protocol_.handleAuthentication(bev);
+}
+
+bool Tunnel::handleRequest(bufferevent *bev)
+{
+    return protocol_.handleRequest(bev);    
 }

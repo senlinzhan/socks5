@@ -21,10 +21,16 @@ class Protocol
 public:
     Protocol(Tunnel *tunnel);
 
-    void readClientProtocol(bufferevent *clientBev);
+    bool handleAuthentication(bufferevent *clientBev);
+    bool handleRequest(bufferevent *clietBev);
     
 private:
-    Tunnel    *tunnel_;
+    static constexpr unsigned char SOCKS5_VERSION        = 0x05;
+    static constexpr unsigned char AUTH_NONE             = 0x00;
+    static constexpr unsigned char AUTH_NO_ACCEPTABLE    = 0xFF;
+
+    Tunnel          *tunnel_;
+    unsigned char   authMethod_;    
 };
 
 #endif /* PROTOCOL_H */

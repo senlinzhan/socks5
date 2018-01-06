@@ -21,7 +21,7 @@ struct  bufferevent;
 class Tunnel
 {
 public:
-    enum class State { init };
+    enum class State { init, authorized, clientMustClose };
     
     Tunnel(event_base *base, int inConnFd);
     ~Tunnel();
@@ -30,8 +30,10 @@ public:
     Tunnel &operator=(const Tunnel &) = delete;
     
     State state() const;
+    void setState(State state);
 
-    void initConnWithClient(bufferevent *bev);
+    bool handleAuthentication(bufferevent *bev);
+    bool handleRequest(bufferevent *bev);
     
 private:
     event_base   *base_;
