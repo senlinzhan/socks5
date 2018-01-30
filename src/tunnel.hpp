@@ -21,7 +21,7 @@ struct  bufferevent;
 class Tunnel
 {
 public:
-    enum class State { init, authorized, clientMustClose };
+    enum class State { init, authorized, clientMustClose, connected };
     
     Tunnel(event_base *base, int inConnFd);
     ~Tunnel();

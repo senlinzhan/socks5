@@ -15,11 +15,13 @@
 #include "protocol.hpp"
 #include "tunnel.hpp"
 
+#include <assert.h>
 #include <arpa/inet.h>
 
 #include <string>
 #include <vector>
 
+#include <event2/dns.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 
@@ -110,6 +112,46 @@ bool Protocol::handleAuthentication(bufferevent *clientBev)
     return true;
 }
 
+static void outConnReadCallback(bufferevent *bev, void *arg)
+{
+    auto tunnel = static_cast<Tunnel *>(arg);
+
+    if (bev == nullptr || tunnel == nullptr)
+    {
+        return;
+    }
+
+    // FIXME
+    auto input = bufferevent_get_input(tunnel->inConn_);
+    auto output = bufferevent_get_output(bev);
+    evbuffer_add_buffer(output, input);
+}
+
+static void outConnEventCallback(bufferevent *bev, short what, void *arg)
+{
+    auto tunnel = static_cast<Tunnel *>(arg);
+
+    if (bev == nullptr || tunnel == nullptr)
+    {
+        return;
+    }
+
+    if (what & BEV_EVENT_CONNECTED)
+    {
+        
+    }
+
+    if (what & BEV_EVENT_EOF)
+    {
+        
+    }
+
+    if (what & BEV_EVENT_ERROR)
+    {
+        
+    }
+}
+
 /**
   The SOCKS request is formed as follows:
   +----+-----+-------+------+----------+----------+
@@ -161,64 +203,64 @@ Protocol::State Protocol::handleRequest(bufferevent *clientBev)
         return State::error;        
     }
 
+    std::string address;
+    unsigned short port;
+    int af;
+
     if (addressType == ADDRESS_TYPE_IPV4)
     {
-        int requestLength = 6 + 4;
-        
-        if (inBuffLength < requestLength)
+        if (inBuffLength < 10)
         {
             return State::incomplete;
         }
-        else if (inBuffLength > requestLength)
+        else if (inBuffLength > 10)
         {
             return State::error;
         }
 
+        af = AF_INET;
         evbuffer_drain(inBuff, 4);
 
         unsigned char rawAddr[4];
-        unsigned short rawPort;
-        
         evbuffer_remove(inBuff, rawAddr, 4);
-        evbuffer_remove(inBuff, &rawPort, 2);
+        evbuffer_remove(inBuff, &port, 2);
 
-        char address[INET_ADDRSTRLEN];
-        unsigned short port;
-        
-        ::inet_ntop(AF_INET, rawAddr, address, INET_ADDRSTRLEN);
-        port = ntohs(rawPort);
+        address.resize(INET_ADDRSTRLEN);
+        ::inet_ntop(AF_INET, rawAddr, &address[0], address.size());
+        port = ntohs(port);
     }
     else if (addressType == ADDRESS_TYPE_IPV6)
     {
-        int requestLength = 6 + 16;
-        if (inBuffLength < requestLength)
+        if (inBuffLength < 22)
         {
             return State::incomplete;
         }
-        else if (inBuffLength > requestLength)
+        else if (inBuffLength > 22)
         {
             return State::error;
         }
 
+        af = AF_INET6;
         evbuffer_drain(inBuff, 4);
 
-        unsigned char rawAddr[16];
-        unsigned short port;
-        
+        unsigned char rawAddr[16];        
         evbuffer_remove(inBuff, rawAddr, 16);
         evbuffer_remove(inBuff, &port, 2);
 
-        char address[INET6_ADDRSTRLEN];        
-        ::inet_ntop(AF_INET6, rawAddr, address, INET_ADDRSTRLEN);
+        address.reserve(INET6_ADDRSTRLEN);
+        ::inet_ntop(AF_INET6, rawAddr, &address[0], address.size());
         port = ntohs(port);
     }
     else
     {
+        assert(addressType == ADDRESS_TYPE_DOMAIN_NAME);
+        
         if (inBuffLength < 5)
         {
             return State::incomplete;
         }
-
+        af = AF_UNSPEC;
+        
         unsigned char data[5];        
         evbuffer_copyout(inBuff, data, 5);
 
@@ -228,15 +270,54 @@ Protocol::State Protocol::handleRequest(bufferevent *clientBev)
             return State::incomplete;
         }
 
-        std::string domain(domainLength, '\0');
-        unsigned short port;
+        address.resize(domainLength);
         
         evbuffer_drain(inBuff, 5);
-        evbuffer_remove(inBuff, &domain[0], domain.size());
+        evbuffer_remove(inBuff, &address[0], address.size());
         evbuffer_remove(inBuff, &port, 2);
         
         port = ntohs(port);        
     }
+
+    if (command == CMD_CONNECT)
+    {
+        auto outConn = bufferevent_socket_new(
+            bufferevent_get_base(clientBev),
+            -1,
+            BEV_OPT_CLOSE_ON_FREE
+        );
+
+        if (outConn == nullptr)
+        {
+            reply[1] = REPLY_SERVER_FAILURE;
+            bufferevent_write(clientBev, reply, 2);
+            return State::error;
+        }
+
+        bufferevent_setcb(outConn, outConnReadCallback, nullptr, outConnEventCallback, tunnel_);
+
+        auto dnsBase = evdns_base_new(
+            bufferevent_get_base(clientBev),
+            EVDNS_BASE_INITIALIZE_NAMESERVERS);
+
+        if (bufferevent_socket_connect_hostname(outConn, dnsBase, af,
+                                                address.c_str(), port) == -1)
+        {
+            reply[1] = REPLY_SERVER_FAILURE;
+            bufferevent_write(clientBev, reply, 2);
+            return State::error;            
+        }
+        
+        tunnel_->setState(Tunnel::State::connected);
+    }
+    else
+    {
+        // we only support CONNECT command here
+        reply[1] = REPLY_COMMAND_NOT_SUPPORTED;
+        bufferevent_write(clientBev, reply, 2);
+        return State::error;        
+    }
+    
     
     return State::success;
 }
