@@ -17,6 +17,7 @@
  **/
 struct event_base;
 struct evconnlistener;
+struct evdns_base;
 
 class Server
 {
@@ -34,6 +35,7 @@ public:
 private:
     event_base        *base_;           // event loop
     evconnlistener    *listener_;       // tcp listener
+    evdns_base        *dns_;            // dns resolver
 };
 
 #endif /* SERVER_H */

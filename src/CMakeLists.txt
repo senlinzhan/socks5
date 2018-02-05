@@ -9,7 +9,8 @@ set(SRCS
     server.cpp
     address.cpp
     tunnel.cpp
-    protocol.cpp
+    auth.cpp
+    request.cpp
 )
 
 add_executable(socks5 ${SRCS})

@@ -12,6 +12,7 @@
 #include "server.hpp"
 #include "tunnel.hpp"
 
+#include <event2/dns.h>
 #include <event2/listener.h>
 
 #include <glog/logging.h>
@@ -24,28 +25,55 @@ static void acceptCallback(evconnlistener *listener, evutil_socket_t fd,
                            sockaddr *address, int socklen, void *arg)
 {
     Address addr(address);
-    if (addr.type() != Address::Type::unknown)
-    {
-        LOG(INFO) << "Accept new connection from: " << addr;
-    }
-    else
+    if (addr.type() == Address::Type::unknown)
     {
         LOG(ERROR) << "Accept new connection from: unknown address";
+        return;
     }
 
+    LOG(INFO) << "Accept new connection from: " << addr;
+
     auto base = evconnlistener_get_base(listener);
-    Tunnel *tunnel = new Tunnel(base, fd);    
+    auto dns = static_cast<evdns_base *>(arg);
+     
+    new Tunnel(base, dns, fd);       
+}
+
+/**
+   Called when server accept failed
+ **/
+static void acceptErrorCallback(evconnlistener *listener, void *arg)
+{
+    auto base = evconnlistener_get_base(listener);
+        
+    int err = EVUTIL_SOCKET_ERROR();
+    LOG(ERROR) << "got an error on the listener: "
+               << evutil_socket_error_to_string(err);
+
+    /**
+       tells the event_base to stop looping 
+       and still running callbacks for any active events
+    **/
+    event_base_loopexit(base, nullptr); 
 }
 
 Server::Server(const std::string &host, gflags::int32 port)
-    : base_(event_base_new()),
-      listener_(nullptr)
+    : base_(nullptr),
+      listener_(nullptr),
+      dns_(nullptr)
 {
+    base_ = event_base_new();
     if (base_ == nullptr)
     {
         LOG(FATAL) << "failed to create event_base";
     }
 
+    dns_ = evdns_base_new(base_, EVDNS_BASE_INITIALIZE_NAMESERVERS);
+    if (dns_ == nullptr)
+    {
+        LOG(FATAL) << "failed to create dns resolver";        
+    }
+    
     auto portStr = std::to_string(port);
     int listeningSocket = createListeningSocket(
         host.c_str(),
@@ -60,7 +88,7 @@ Server::Server(const std::string &host, gflags::int32 port)
     listener_ = evconnlistener_new(
         base_,
         acceptCallback,
-        nullptr,
+        dns_,
         LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_EXEC,
         -1,
         listeningSocket
@@ -72,7 +100,9 @@ Server::Server(const std::string &host, gflags::int32 port)
         LOG(FATAL) << "failed to create listener: "
                    << evutil_socket_error_to_string(err);
     }
-}
+
+    evconnlistener_set_error_cb(listener_, acceptErrorCallback);
+} 
 
 /**
    Run the event loop
@@ -85,5 +115,6 @@ void Server::run()
 Server::~Server()
 {
     evconnlistener_free(listener_);
+    evdns_base_free(dns_, 1); 
     event_base_free(base_);    
 }

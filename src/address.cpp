@@ -9,7 +9,13 @@
 
 #include "address.hpp"
 
+#include <assert.h>
 #include <arpa/inet.h>
+
+Address::Address()
+    : type_(Type::unknown)
+{    
+}
 
 Address::Address(struct sockaddr *address)
     : type_(Type::unknown)
@@ -17,9 +23,9 @@ Address::Address(struct sockaddr *address)
     if (address->sa_family == AF_INET)
     {
         auto sin = reinterpret_cast<sockaddr_in *>(address);
-        ip_.reserve(INET_ADDRSTRLEN);
+        host_.resize(INET_ADDRSTRLEN, '\0');
 
-        if (::inet_ntop(AF_INET, &sin->sin_addr, &ip_[0], INET_ADDRSTRLEN) != nullptr)
+        if (::inet_ntop(AF_INET, &sin->sin_addr, &host_[0], host_.size()) != nullptr)
         {
             type_ = Type::ipv4;
             port_ = ntohs(sin->sin_port);            
@@ -28,9 +34,9 @@ Address::Address(struct sockaddr *address)
     else if (address->sa_family == AF_INET6)
     {
         auto sin = reinterpret_cast<sockaddr_in6 *>(address);
-        ip_.reserve(INET6_ADDRSTRLEN);
+        host_.resize(INET6_ADDRSTRLEN, '\0');
         
-        if (::inet_ntop(AF_INET, &sin->sin6_addr, &ip_[0], INET6_ADDRSTRLEN) != nullptr)
+        if (::inet_ntop(AF_INET6, &sin->sin6_addr, &host_[0], host_.size()) != nullptr)
         {
             type_ = Type::ipv6;
             port_ = ntohs(sin->sin6_port);            
@@ -38,9 +44,38 @@ Address::Address(struct sockaddr *address)
     }
 }
 
-std::string Address::ip() const
+Address::Address(const std::array<unsigned char, 4> &address, unsigned short port)
+    : type_(Type::unknown),
+      host_(INET_ADDRSTRLEN, '\0')
 {
-    return ip_;
+    if (::inet_ntop(AF_INET, &address[0], &host_[0], host_.size()) != nullptr)
+    {
+        type_ = Type::ipv4;
+        port_ = ntohs(port);            
+    }
+}
+
+Address::Address(const std::array<unsigned char, 16> &address, unsigned short port)
+    : type_(Type::unknown),
+      host_(INET6_ADDRSTRLEN, '\0')
+{
+    if (::inet_ntop(AF_INET6, &address[0], &host_[0], host_.size()) != nullptr)
+    {
+        type_ = Type::ipv6;
+        port_ = ntohs(port);            
+    }    
+}
+
+Address::Address(const std::string &domain, unsigned short port)
+    : type_(Type::domain),
+      host_(domain)
+{
+    port_ = ntohs(port);
+}
+
+std::string Address::host() const
+{
+    return host_;
 }
 
 uint16_t Address::port() const
@@ -50,7 +85,7 @@ uint16_t Address::port() const
 
 std::string Address::toString() const
 {
-    return ip_ + ":" + std::to_string(port_);
+    return host_ + ":" + std::to_string(port_);
 }
 
 Address::Type Address::type() const
@@ -62,4 +97,34 @@ std::ostream &operator<<(std::ostream &os, const Address &addr)
 {
     os << addr.toString();
     return os;
+}
+ 
+bool Address::isValid() const
+{
+    return type_ != Type::unknown;
+}
+
+std::array<unsigned char, 4> Address::toRawIPv4() const
+{
+    assert(type_ == Type::ipv4);
+
+    std::array<unsigned char, 4> address;    
+    ::inet_pton(AF_INET, host_.c_str(), &address[0]);
+    
+    return address;
+}
+
+std::array<unsigned char, 16> Address::toRawIPv6() const
+{
+    assert(type_ == Type::ipv6);
+
+    std::array<unsigned char, 16> address;
+    ::inet_pton(AF_INET6, host_.c_str(), &address[0]);    
+    
+    return address;    
+}
+
+unsigned short Address::portNetworkOrder() const
+{
+    return htons(port_);
 }

@@ -7,45 +7,69 @@
  *
  ******************************************************************************/
 
+#include "auth.hpp"
 #include "tunnel.hpp"
+
+#include <assert.h>
 
 #include <glog/logging.h>
 
-#include <event2/listener.h>
+#include <event2/dns.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
+#include <event2/listener.h>
 
-
-static void inConnReadCallback(bufferevent *bev, void *arg)
+static void inConnReadCallback(bufferevent *inConn, void *arg)
 {
     auto tunnel = static_cast<Tunnel *>(arg);
-    if (bev == nullptr || tunnel == nullptr)
+    if (inConn == nullptr || tunnel == nullptr)
     {
         LOG(ERROR) << "inConnReadCallback receive invalid arguments";
         return;
     }
 
-    auto fd = bufferevent_getfd(bev);
+    auto inConnFd = bufferevent_getfd(inConn);
     
     if (tunnel->state() == Tunnel::State::init)
     {
-        if (!tunnel->handleAuthentication(bev))
+        auto state = tunnel->handleAuthentication(inConn);
+
+        if (state == Auth::State::success)
         {
-            LOG(ERROR) << "Failed to parse authentication protocol for client-" << fd;
+            tunnel->setState(Tunnel::State::authorized);
+        }
+        else if (state == Auth::State::failed)
+        {
+            // authentication failed, we let client close it's connection
+            tunnel->setState(Tunnel::State::clientMustClose);            
+        }
+        else if (state == Auth::State::error)
+        {
+            // error occurred, we close client connection
             delete tunnel;
         }
-    }
+        else
+        {
+            // the data received is incomplete, nothing to do here
+            assert(state == Auth::State::incomplete);
+        }
+
+        return;
+    }    
     else if (tunnel->state() == Tunnel::State::authorized)
     {
-        if (!tunnel->handleRequest(bev))
+        /*
+        if (!tunnel->handleRequest(inConn))
         {
-            LOG(ERROR) << "Failed to handle request from client-" << fd;
+            LOG(ERROR) << "Failed to handle request from client-" << inConnFd;
             delete tunnel;
         }
+        */
     }
     else if (tunnel->state() == Tunnel::State::clientMustClose)
     {
-        LOG(ERROR) << "At this point the client-" << fd << " shouldn't send any data";
+        LOG(ERROR) << "At this point the client-" << inConnFd
+                   << " shouldn't send any data";
         delete tunnel;
     }
 }
@@ -78,19 +102,10 @@ static void inConnEventCallback(bufferevent *bev, short what, void *arg)
     }
 }
 
-static void outConnReadCallback(bufferevent *bev, void *arg)
-{
-    auto tunnel = static_cast<Tunnel *>(arg);
-    if (bev == nullptr || tunnel == nullptr)
-    {
-        LOG(ERROR) << "outConnReadCallback receive invalid arguments";
-        return;
-    }    
-}
-
 /**
    Called when bufferevent wirte all it's data to the peer
  **/
+/**
 static void closeOnWriteComplete(bufferevent *bev, void *arg)
 {
     auto tunnel = static_cast<Tunnel *>(arg);
@@ -108,14 +123,15 @@ static void closeOnWriteComplete(bufferevent *bev, void *arg)
         bufferevent_free(bev);
     }
 }
+**/
 
-Tunnel::Tunnel(event_base *base, int inConnFd)
+Tunnel::Tunnel(event_base *base, evdns_base *dns, int inConnFd)
     : base_(base),
+      dns_(dns),
       inConnFd_(inConnFd),
       inConn_(nullptr),
       outConn_(nullptr),
-      state_(State::init),
-      protocol_(this)
+      state_(State::init)
 {
     evutil_make_socket_nonblocking(inConnFd_);
 
@@ -159,12 +175,23 @@ Tunnel::~Tunnel()
     }
 }
 
-bool Tunnel::handleAuthentication(bufferevent *bev)
+Auth::State Tunnel::handleAuthentication(bufferevent *inConn)
 {
-    return protocol_.handleAuthentication(bev);
+    assert(inConn == inConn_);
+    
+    Auth auth(inConn);
+    return auth.authenticate();
 }
 
-bool Tunnel::handleRequest(bufferevent *bev)
+Request::State Tunnel::handleRequest(bufferevent *inConn)
 {
-    return protocol_.handleRequest(bev);    
+    assert(inConn == inConn_);
+    
+    Request request(dns_, inConn);
+    return request.handleRequest();
+}
+
+bufferevent *Tunnel::inConnection() const
+{
+    return inConn_;
 }

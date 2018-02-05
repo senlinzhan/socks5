@@ -1,27 +1,42 @@
-/*******************************************************************************
- *
- * socks5
- * A C++11 socks5 proxy server based on Libevent 
- *
- * Copyright 2018 Senlin Zhan. All rights reserved.
- *
- ******************************************************************************/
+#ifndef REQUEST_H
+#define REQUEST_H
 
-#ifndef PROTOCOL_H
-#define PROTOCOL_H
-
-#include <memory>
+#include "address.hpp"
 
 /**
    Forward declaration
  **/
 struct  bufferevent;
-class   Tunnel;
-class   Address;
+struct  evdns_base;
 
-class Protocol
+class Request 
 {
 public:
+    enum class State {incomplete, success, error};
+    
+    Request(evdns_base *dns, bufferevent *inConn);
+
+    // disable the copy operations
+    Request(const Request &) = delete;
+    Request &operator=(const Request &) = delete;
+
+    State handleRequest();
+private:
+    State readAddress(unsigned char addressType, Address &address);    
+    void sendReply(unsigned char code);
+
+    // Handle CONNECT command
+    State handleConnect(const Address &address);
+
+    // Handle BIND command    
+    State handleBind();
+
+    // Handle UDP ASSOCIATE command
+    State handleUDPAssociate();
+ 
+    evdns_base    *dns_;
+    bufferevent   *inConn_;
+
     static constexpr unsigned char SOCKS5_VERSION                   = 0x05;
     
     static constexpr unsigned char CMD_CONNECT                      = 0x01;
@@ -40,32 +55,7 @@ public:
     static constexpr unsigned char REPLY_CONNECTIONREFUSED          = 0x05;
     static constexpr unsigned char REPLY_TTL_EXPIRED                = 0x06;
     static constexpr unsigned char REPLY_COMMAND_NOT_SUPPORTED      = 0x07;
-    static constexpr unsigned char REPLY_ADDRESS_TYPE_NOT_SUPPORTED = 0x08;
-    
-    enum class State { incomplete, success, error };
-    
-    Protocol(Tunnel *tunnel);
-    
-    State handleRequest(bufferevent *clietBev);
-    
-private:    
-    inline bool isValidAddressType(unsigned char addressType)
-    {
-        return (addressType == ADDRESS_TYPE_IPV4 ||
-                addressType == ADDRESS_TYPE_DOMAIN_NAME ||
-                addressType == ADDRESS_TYPE_IPV6);
-    }
-
-    inline bool isValidCommand(unsigned char command)
-    {
-        return (command == CMD_CONNECT ||
-                command == CMD_BIND ||
-                command == CMD_UDP_ASSOCIATE);
-    }
-    
-    Tunnel          *tunnel_;
-
-    std::unique_ptr<Address> address_;
+    static constexpr unsigned char REPLY_ADDRESS_TYPE_NOT_SUPPORTED = 0x08;    
 };
 
-#endif /* PROTOCOL_H */
+#endif /* REQUEST_H */

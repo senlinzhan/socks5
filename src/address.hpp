@@ -13,24 +13,56 @@
 #include <netinet/in.h>
 #include <stdint.h>
 
+#include <array>
 #include <iostream>
 #include <string>
 
 class Address
 {
 public:
-    enum Type { ipv4, ipv6, unknown };
-    
-    Address(struct sockaddr *address);
+    enum Type { ipv4, ipv6, domain, unknown };
 
-    std::string ip() const;
+    // Construct an invalid address
+    Address();
+    
+    explicit Address(struct sockaddr *address);
+
+    // Constructor for IPv4 Raw Address
+    Address(const std::array<unsigned char, 4> &address, unsigned short port);
+
+    // Constructor for IPv6 Raw Address
+    Address(const std::array<unsigned char, 16> &address, unsigned short port);
+    
+    // Constructor for domain name
+    Address(const std::string &domain, unsigned short port);
+    
+    // Return ip address or domain name
+    std::string host() const;
+
+    // Return port in host byte order
     std::uint16_t port() const;
+
+    // Return string representation of host and port
     std::string toString() const;
+
+    // Return type of address
     Type type() const;
 
+    // Whether the address is valid
+    bool isValid() const;
+
+    // Return bytes representation of IPv4 address
+    std::array<unsigned char, 4> toRawIPv4() const;
+
+    // Return bytes representation of IPv6 address    
+    std::array<unsigned char, 16> toRawIPv6() const;
+
+    // Return port in network byte order
+    unsigned short portNetworkOrder() const;
+    
 private:
     Type          type_;
-    std::string   ip_;
+    std::string   host_;
     uint16_t      port_;
 };
 

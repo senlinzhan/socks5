@@ -20,10 +20,6 @@
 
 #include <event2/util.h>
 
-/**
-    Create the listening socket and make it nonblocking
-    Returns the listening socket descriptor on success, -1 on failure
- **/
 int createListeningSocket(const char *hostname, const char *service)
 {
     struct addrinfo hints;
@@ -61,4 +57,18 @@ int createListeningSocket(const char *hostname, const char *service)
     freeaddrinfo(servinfo);
     
     return sockfd;    
+}
+
+Address getSocketLocalAddress(int fd)
+{
+    struct sockaddr_storage addr;
+    socklen_t len = sizeof(addr);    
+    
+    memset(&addr, 0, len);
+    if (::getsockname(fd, reinterpret_cast<struct sockaddr *>(&addr), &len) < 0)
+    {
+        return Address();
+    }
+
+    return Address(reinterpret_cast<struct sockaddr *>(&addr));
 }
