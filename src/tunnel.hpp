@@ -25,7 +25,7 @@ class   Auth;
 class Tunnel
 {
 public:
-    enum class State { init, authorized, clientMustClose, connected };
+    enum class State { init, authorized, clientMustClose, connected, waitForConnect };
     
     Tunnel(event_base *base, evdns_base *dns, int inConnFd);
     ~Tunnel();
@@ -40,7 +40,7 @@ public:
     Request::State handleRequest(bufferevent *inConn);
     
     bufferevent *inConnection() const;
-    
+    bufferevent *outConnection() const;    
 private:
     event_base              *base_;
     evdns_base              *dns_;

@@ -58,13 +58,37 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
     }    
     else if (tunnel->state() == Tunnel::State::authorized)
     {
-        /*
-        if (!tunnel->handleRequest(inConn))
+        auto state = tunnel->handleRequest(inConn);
+        if (state == Request::State::success)
         {
-            LOG(ERROR) << "Failed to handle request from client-" << inConnFd;
+            tunnel->setState(Tunnel::State::waitForConnect);
+        }
+        else if (state == Request::State::error)
+        {
             delete tunnel;
         }
-        */
+        else
+        {
+            // the data received is incomplete, nothing to do here
+            assert(state == Request::State::incomplete);            
+        }
+    }
+    else if (tunnel->state() == Tunnel::State::waitForConnect)
+    {
+        /** 
+            Waiting for establishing connection to the server,
+            at this point the clien can't send any data to the socks5 server
+         **/
+        delete tunnel;
+    }
+    else if (tunnel->state() == Tunnel::State::connected)
+    {
+        auto outConn = tunnel->outConnection();
+        
+        auto input = bufferevent_get_input(inConn);
+        auto output = bufferevent_get_output(outConn);
+
+        evbuffer_add_buffer(output, input);        
     }
     else if (tunnel->state() == Tunnel::State::clientMustClose)
     {
@@ -187,11 +211,20 @@ Request::State Tunnel::handleRequest(bufferevent *inConn)
 {
     assert(inConn == inConn_);
     
-    Request request(dns_, inConn);
+    Request request(dns_, this);
     return request.handleRequest();
 }
 
 bufferevent *Tunnel::inConnection() const
 {
+    assert(inConn_ != nullptr);
+    
     return inConn_;
+}
+
+bufferevent *Tunnel::outConnection() const
+{
+    assert(outConn_ != nullptr);
+    
+    return outConn_;
 }

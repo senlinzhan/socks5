@@ -13,7 +13,7 @@ class Auth
 public:
     enum class State { incomplete, success, failed, error };
     
-    Auth(struct bufferevent *inConn);
+    Auth(bufferevent *inConn);
     
     // disable the copy operations    
     Auth(const Auth &) = delete;

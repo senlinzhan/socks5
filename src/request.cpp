@@ -1,3 +1,5 @@
+#include "sockets.hpp"
+#include "tunnel.hpp"
 #include "request.hpp"
 
 #include <assert.h>
@@ -6,12 +8,15 @@
 #include <event2/dns.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
-
-Request::Request(evdns_base *dns, struct bufferevent *inConn)
+ 
+Request::Request(evdns_base *dns, Tunnel *tunnel)
     : dns_(dns),
-      inConn_(inConn)
-{
+      tunnel_(tunnel)
+{    
     assert(dns_ != nullptr);
+    assert(tunnel_ != nullptr);
+
+    inConn_ = tunnel->inConnection();
     assert(inConn_ != nullptr);
 }
  
@@ -73,7 +78,7 @@ Request::State Request::handleRequest()
     }
     else
     {
-        sendReply(REPLY_COMMAND_NOT_SUPPORTED);
+        replyForError(inConn_, REPLY_COMMAND_NOT_SUPPORTED);
         return State::error;        
     }
     
@@ -95,7 +100,7 @@ Request::State Request::readAddress(unsigned char addressType, Address &address)
         addressType != ADDRESS_TYPE_IPV6 &&
         addressType != ADDRESS_TYPE_DOMAIN_NAME)
     {
-        sendReply(REPLY_ADDRESS_TYPE_NOT_SUPPORTED);        
+        replyForError(inConn_, REPLY_ADDRESS_TYPE_NOT_SUPPORTED);        
         return State::error;
     }
     
@@ -178,14 +183,64 @@ Request::State Request::readAddress(unsigned char addressType, Address &address)
     return State::success;
 }
 
-void Request::sendReply(unsigned char code)
+void Request::replyForError(bufferevent *inConn, unsigned char code)
 {
-    unsigned char content[2];
+    assert(inConn != nullptr);
+    assert(code != REPLY_SUCCESS);
+     
+    return sendReply(inConn, code, Address());
+}
 
-    content[0] = SOCKS5_VERSION;
-    content[1] = code;
+void Request::replyForSuccess(bufferevent *inConn, const Address &address)
+{
+    assert(inConn != nullptr);
+    assert(address.type() != Address::Type::domain);
+    assert(address.type() != Address::Type::unknown);
     
-    bufferevent_write(inConn_, content, 2);    
+    return sendReply(inConn, REPLY_SUCCESS, address);
+}
+
+void Request::sendReply(bufferevent *inConn, unsigned char code, const Address &address)
+{
+    unsigned char reply[4];
+
+    reply[0] = SOCKS5_VERSION;
+    reply[1] = code;
+    reply[2] = 0x00;
+    
+    if (address.type() == Address::Type::ipv4)
+    {
+        reply[3] = ADDRESS_TYPE_IPV4;
+        bufferevent_write(inConn, reply, 4);
+        
+        auto ip = address.toRawIPv4();
+        auto port = address.portNetworkOrder();
+        
+        bufferevent_write(inConn, ip.data(), ip.size());
+        bufferevent_write(inConn, &port, 2);                    
+    }
+    else if (address.type() == Address::Type::ipv6)
+    {
+        reply[3] = ADDRESS_TYPE_IPV6;
+        bufferevent_write(inConn, reply, 4);
+
+        auto ip = address.toRawIPv6();
+        auto port = address.portNetworkOrder();
+        
+        bufferevent_write(inConn, ip.data(), ip.size());
+        bufferevent_write(inConn, &port, 2);        
+    }
+    else
+    {
+        reply[3] = ADDRESS_TYPE_IPV4;        
+        bufferevent_write(inConn, reply, 4);
+        
+        std::array<unsigned char, 4> ip = {{ 0, 0, 0, 0 }};
+        unsigned short port = 0;
+
+        bufferevent_write(inConn, ip.data(), ip.size());
+        bufferevent_write(inConn, &port, 2);
+    }
 }
 
 /**
@@ -198,7 +253,7 @@ void Request::sendReply(unsigned char code)
 Request::State Request::handleBind()
 {
     // FIXME: support BIND command
-    sendReply(REPLY_COMMAND_NOT_SUPPORTED);
+    replyForError(inConn_, REPLY_COMMAND_NOT_SUPPORTED);
     
     return State::error;
 }
@@ -213,9 +268,64 @@ Request::State Request::handleBind()
 Request::State Request::handleUDPAssociate()
 {
     // FIXME: support UDP ASSOCIATE command
-    sendReply(REPLY_COMMAND_NOT_SUPPORTED);
+    replyForError(inConn_, REPLY_COMMAND_NOT_SUPPORTED);
     
     return State::error;
+}
+
+static void outConnReadCallback(bufferevent *outConn, void *arg)
+{
+    auto tunnel = static_cast<Tunnel *>(arg);
+    if (outConn == nullptr ||
+        tunnel == nullptr ||
+        tunnel->inConnection() == nullptr)
+    {
+        return;
+    }
+    
+    auto input = bufferevent_get_input(outConn);
+    auto output = bufferevent_get_output(tunnel->inConnection());
+    
+    evbuffer_add_buffer(output, input);
+}
+
+static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
+{
+    auto tunnel = static_cast<Tunnel *>(arg);
+    if (outConn == nullptr || tunnel == nullptr)
+    {
+        return;
+    }
+
+    int outConnFd = bufferevent_getfd(outConn);
+    auto inConn = tunnel->inConnection();
+    
+    if (what & BEV_EVENT_CONNECTED)
+    {
+        Address addr = getSocketLocalAddress(outConnFd);
+        
+        if (addr.type() == Address::Type::ipv4 ||
+            addr.type() == Address::Type::ipv6)
+        {
+            Request::replyForSuccess(inConn, addr);
+            tunnel->setState(Tunnel::State::connected);
+        }
+        else
+        {
+            Request::replyForError(inConn, Request::REPLY_SERVER_FAILURE);
+            delete tunnel;
+        }
+    }
+
+    if (what & BEV_EVENT_EOF)
+    {
+        delete tunnel;
+    }
+
+    if (what & BEV_EVENT_ERROR)
+    {
+        delete tunnel;
+    }    
 }
 
 /**
@@ -231,15 +341,15 @@ Request::State Request::handleConnect(const Address &address)
         bufferevent_get_base(inConn_),
         -1,
         BEV_OPT_CLOSE_ON_FREE
-        );
+    );
     
     if (outConn == nullptr)
     {
-        sendReply(REPLY_SERVER_FAILURE);
+        replyForError(inConn_, REPLY_SERVER_FAILURE);
         return State::error;
     }
     
-    //bufferevent_setcb(outConn, outConnReadCallback, nullptr, outConnEventCallback, tunnel_);
+    bufferevent_setcb(outConn, outConnReadCallback, nullptr, outConnEventCallback, tunnel_);
 
     int af;
     if (address.type() == Address::Type::ipv4)
@@ -263,15 +373,15 @@ Request::State Request::handleConnect(const Address &address)
 
         if (err == ENETUNREACH)
         {
-            sendReply(REPLY_NETWORK_UNREACHABLE);
+            replyForError(inConn_, REPLY_NETWORK_UNREACHABLE);
         }
         else if (err == ECONNREFUSED)
         {
-            sendReply(REPLY_CONNECTIONREFUSED);
+            replyForError(inConn_, REPLY_CONNECTIONREFUSED);
         }
         else
         {
-            sendReply(REPLY_HOST_UNREACHABLE);
+            replyForError(inConn_, REPLY_HOST_UNREACHABLE);
         }
         
         return State::error;            

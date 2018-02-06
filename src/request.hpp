@@ -8,35 +8,11 @@
  **/
 struct  bufferevent;
 struct  evdns_base;
+class   Tunnel;
 
 class Request 
 {
 public:
-    enum class State {incomplete, success, error};
-    
-    Request(evdns_base *dns, bufferevent *inConn);
-
-    // disable the copy operations
-    Request(const Request &) = delete;
-    Request &operator=(const Request &) = delete;
-
-    State handleRequest();
-private:
-    State readAddress(unsigned char addressType, Address &address);    
-    void sendReply(unsigned char code);
-
-    // Handle CONNECT command
-    State handleConnect(const Address &address);
-
-    // Handle BIND command    
-    State handleBind();
-
-    // Handle UDP ASSOCIATE command
-    State handleUDPAssociate();
- 
-    evdns_base    *dns_;
-    bufferevent   *inConn_;
-
     static constexpr unsigned char SOCKS5_VERSION                   = 0x05;
     
     static constexpr unsigned char CMD_CONNECT                      = 0x01;
@@ -55,7 +31,43 @@ private:
     static constexpr unsigned char REPLY_CONNECTIONREFUSED          = 0x05;
     static constexpr unsigned char REPLY_TTL_EXPIRED                = 0x06;
     static constexpr unsigned char REPLY_COMMAND_NOT_SUPPORTED      = 0x07;
-    static constexpr unsigned char REPLY_ADDRESS_TYPE_NOT_SUPPORTED = 0x08;    
+    static constexpr unsigned char REPLY_ADDRESS_TYPE_NOT_SUPPORTED = 0x08;
+    
+    enum class State {incomplete, success, error};
+    
+    Request(evdns_base *dns, Tunnel *tunnel);
+
+    // disable the copy operations
+    Request(const Request &) = delete;
+    Request &operator=(const Request &) = delete;
+
+    // Handle client request
+    State handleRequest();
+
+    // Send reply to client when error occured
+    static void replyForError(bufferevent *inConn, unsigned char code);   
+    
+    // Send reply to client connection when success
+    static void replyForSuccess(bufferevent *inConn, const Address &address);    
+private:
+    // Send reply to client connection
+    static void sendReply(bufferevent *inConn, unsigned char code, const Address &address);
+    
+    // Read destination address
+    State readAddress(unsigned char addressType, Address &address);
+
+    // Handle CONNECT command
+    State handleConnect(const Address &address);
+
+    // Handle BIND command    
+    State handleBind();
+
+    // Handle UDP ASSOCIATE command
+    State handleUDPAssociate();
+ 
+    evdns_base    *dns_;
+    Tunnel        *tunnel_;
+    bufferevent   *inConn_;
 };
 
 #endif /* REQUEST_H */

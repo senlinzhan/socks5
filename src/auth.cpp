@@ -5,7 +5,7 @@
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 
-Auth::Auth(struct bufferevent *inConn)
+Auth::Auth(bufferevent *inConn)
     : inConn_(inConn),
       authMethod_(AUTH_NO_ACCEPTABLE),
       supportMethods_{AUTH_NONE}
