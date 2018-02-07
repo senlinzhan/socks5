@@ -15,6 +15,8 @@
 #include <event2/dns.h>
 #include <event2/listener.h>
 
+#include <iostream>
+
 #include <glog/logging.h>
 #include <arpa/inet.h>
 
@@ -67,7 +69,7 @@ Server::Server(const std::string &host, gflags::int32 port)
     {
         LOG(FATAL) << "failed to create event_base";
     }
-
+    
     dns_ = evdns_base_new(base_, EVDNS_BASE_INITIALIZE_NAMESERVERS);
     if (dns_ == nullptr)
     {
@@ -84,6 +86,8 @@ Server::Server(const std::string &host, gflags::int32 port)
     {
         LOG(FATAL) << "failed to create listening socket";
     }
+
+    LOG(INFO) << "create listening socket - " << listeningSocket;
     
     listener_ = evconnlistener_new(
         base_,

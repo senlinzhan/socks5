@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <array>
 
+#include <glog/logging.h>
+
+#include <event2/event.h>
 #include <event2/dns.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
@@ -64,6 +67,8 @@ Request::State Request::handleRequest()
         return state;
     }
 
+    assert(evbuffer_get_length(inBuff) == 0);
+    
     if (command == CMD_CONNECT)
     {
         return handleConnect(address);
@@ -179,7 +184,8 @@ Request::State Request::readAddress(unsigned char addressType, Address &address)
     {
         return State::error;
     }
-    
+
+    LOG(INFO) << "Read destination address: " << address;
     return State::success;
 }
 
@@ -280,11 +286,14 @@ static void outConnReadCallback(bufferevent *outConn, void *arg)
         tunnel == nullptr ||
         tunnel->inConnection() == nullptr)
     {
+        LOG(ERROR) << "inConnReadCallback receive invalid arguments";        
         return;
     }
     
     auto input = bufferevent_get_input(outConn);
     auto output = bufferevent_get_output(tunnel->inConnection());
+
+    LOG(INFO) << "Transfer data from server to client-" << tunnel->clientID();
     
     evbuffer_add_buffer(output, input);
 }
@@ -299,9 +308,10 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
 
     int outConnFd = bufferevent_getfd(outConn);
     auto inConn = tunnel->inConnection();
+    int clientID = tunnel->clientID();
     
     if (what & BEV_EVENT_CONNECTED)
-    {
+    {       
         Address addr = getSocketLocalAddress(outConnFd);
         
         if (addr.type() == Address::Type::ipv4 ||
@@ -309,6 +319,8 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
         {
             Request::replyForSuccess(inConn, addr);
             tunnel->setState(Tunnel::State::connected);
+            
+            LOG(INFO) << "Connect to destination success for client-" << clientID;
         }
         else
         {
@@ -319,11 +331,16 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
 
     if (what & BEV_EVENT_EOF)
     {
+        LOG(INFO) << "Connection closed by server for client-" << clientID;
         delete tunnel;
     }
 
     if (what & BEV_EVENT_ERROR)
     {
+        int err = EVUTIL_SOCKET_ERROR();
+        LOG(ERROR) << "Connection to server error for client-" << clientID
+                   << ": " << evutil_socket_error_to_string(err);
+        
         delete tunnel;
     }    
 }
@@ -336,7 +353,9 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
      State::error        an error occurred   
  **/
 Request::State Request::handleConnect(const Address &address)
-{
+{    
+    LOG(INFO) << "Handle connect for client-" << tunnel_->clientID();
+    
     auto outConn = bufferevent_socket_new(
         bufferevent_get_base(inConn_),
         -1,
@@ -349,8 +368,10 @@ Request::State Request::handleConnect(const Address &address)
         return State::error;
     }
     
+    tunnel_->setOutConnection(outConn);    
     bufferevent_setcb(outConn, outConnReadCallback, nullptr, outConnEventCallback, tunnel_);
-
+    bufferevent_enable(outConn, EV_READ | EV_WRITE);
+    
     int af;
     if (address.type() == Address::Type::ipv4)
     {

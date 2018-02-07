@@ -40,7 +40,12 @@ public:
     Request::State handleRequest(bufferevent *inConn);
     
     bufferevent *inConnection() const;
-    bufferevent *outConnection() const;    
+    bufferevent *outConnection() const;
+    
+    void setOutConnection(bufferevent *outConn);
+
+    int clientID() const;
+    
 private:
     event_base              *base_;
     evdns_base              *dns_;

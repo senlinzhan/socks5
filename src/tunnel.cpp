@@ -28,10 +28,12 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
         return;
     }
 
-    auto inConnFd = bufferevent_getfd(inConn);
+    int clientID = tunnel->clientID();
     
     if (tunnel->state() == Tunnel::State::init)
     {
+        LOG(INFO) << "Handle Authentication for client-" << clientID;
+        
         auto state = tunnel->handleAuthentication(inConn);
 
         if (state == Auth::State::success)
@@ -83,16 +85,14 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
     }
     else if (tunnel->state() == Tunnel::State::connected)
     {
-        auto outConn = tunnel->outConnection();
+        auto outConn = tunnel->outConnection();        
+        bufferevent_read_buffer(inConn, bufferevent_get_output(outConn));
         
-        auto input = bufferevent_get_input(inConn);
-        auto output = bufferevent_get_output(outConn);
-
-        evbuffer_add_buffer(output, input);        
+        LOG(INFO) << "Transfer data from client-" << clientID << " to server";
     }
     else if (tunnel->state() == Tunnel::State::clientMustClose)
     {
-        LOG(ERROR) << "At this point the client-" << inConnFd
+        LOG(ERROR) << "At this point the client-" << clientID
                    << " shouldn't send any data";
         delete tunnel;
     }
@@ -107,11 +107,10 @@ static void inConnEventCallback(bufferevent *bev, short what, void *arg)
         return;
     }
 
-    auto fd = bufferevent_getfd(bev);
-    
+    int clientID = tunnel->clientID();    
     if (what & BEV_EVENT_EOF)
     {
-        LOG(INFO) << "Client-" << fd << " close connection";           
+        LOG(INFO) << "Client-" << clientID << " close connection";           
 
         delete tunnel;
     }
@@ -119,7 +118,7 @@ static void inConnEventCallback(bufferevent *bev, short what, void *arg)
     if (what & BEV_EVENT_ERROR)
     {
         int err = EVUTIL_SOCKET_ERROR();
-        LOG(INFO) << "Client-" << fd << " connection error: "
+        LOG(ERROR) << "Client-" << clientID << " connection error: "
                   << evutil_socket_error_to_string(err);
 
         delete tunnel;
@@ -172,6 +171,11 @@ Tunnel::Tunnel(event_base *base, evdns_base *dns, int inConnFd)
         LOG(ERROR) << "Failed to enable read/write on client-" << inConnFd_;
         return;
     }
+}
+
+int Tunnel::clientID() const
+{
+    return inConnFd_;
 }
 
 Tunnel::State Tunnel::state() const
@@ -227,4 +231,12 @@ bufferevent *Tunnel::outConnection() const
     assert(outConn_ != nullptr);
     
     return outConn_;
+}
+
+void Tunnel::setOutConnection(bufferevent *outConn)
+{
+    assert(outConn != nullptr);
+    assert(outConn_ == nullptr);
+
+    outConn_ = outConn;
 }
