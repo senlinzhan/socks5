@@ -1,6 +1,7 @@
 #ifndef AUTH_H
 #define AUTH_H
 
+#include <string>
 #include <unordered_set>
 
 /**
@@ -14,12 +15,14 @@ public:
     enum class State { incomplete, success, failed, error };
     
     Auth(bufferevent *inConn);
+    Auth(bufferevent *inConn, const std::string &username, const std::string &password);
     
     // disable the copy operations    
     Auth(const Auth &) = delete;
     Auth &operator=(const Auth &) = delete;
 
     State authenticate();
+    State validateUsernamePassword();
     
 private:
     static constexpr unsigned char      SOCKS5_VERSION          = 0x05;    
@@ -30,6 +33,8 @@ private:
     bufferevent                         *inConn_;
     unsigned char                       authMethod_;
     std::unordered_set<unsigned char>   supportMethods_;
+    std::string                         username_;
+    std::string                         password_;
 };
 
 #endif /* AUTH_H */

@@ -12,6 +12,15 @@ Auth::Auth(bufferevent *inConn)
 {    
 }
 
+Auth::Auth(bufferevent *inConn, const std::string &username, const std::string &password)
+    : inConn_(inConn),
+      authMethod_(AUTH_NO_ACCEPTABLE),
+      supportMethods_{AUTH_USER_PASSWORD},
+      username_(username),
+      password_(password)
+{
+}
+
 /**
    Handling client authentication
 
@@ -99,5 +108,59 @@ Auth::State Auth::authenticate()
         return State::failed;
     }
 
+    return State::success;
+}
+
+
+Auth::State Auth::validateUsernamePassword()
+{
+    auto inBuff = bufferevent_get_input(inConn_);
+    auto inBuffLength = evbuffer_get_length(inBuff);
+
+    if (inBuffLength < 2)
+    {
+        return State::incomplete;
+    }
+
+    // 1024 bytes is enough
+    unsigned char data[1024];
+
+    // Get version number and length of username
+    evbuffer_copyout(inBuff, data, 2);
+
+    // check protocol version number
+    if (data[0] != SOCKS5_VERSION)
+    {
+        return State::error;
+    }
+
+    auto userLength = data[1];        
+    if (inBuffLength < 3 + userLength)
+    {
+        return State::incomplete;
+    }
+
+    // Get version number and length of username
+    evbuffer_copyout(inBuff, data, 3 + userLength);    
+
+    auto passLength = data[userLength + 2];
+    if (inBuffLength < 4 + userLength + passLength)
+    {
+        return State::incomplete;        
+    }
+    else if (inBuffLength > 4 + userLength + passLength)
+    {
+        return State::error;
+    }
+
+    evbuffer_remove(inBuff, data, inBuffLength);
+    std::string username(&data[3], &data[3 + userLength]);
+    std::string password(&data[4 + userLength], &data[inBuffLength]);
+
+    if (username != username_ || password != password_)
+    {
+        return State::failed;
+    }
+    
     return State::success;
 }
