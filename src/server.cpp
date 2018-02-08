@@ -15,8 +15,6 @@
 #include <event2/dns.h>
 #include <event2/listener.h>
 
-#include <iostream>
-
 #include <glog/logging.h>
 #include <arpa/inet.h>
 

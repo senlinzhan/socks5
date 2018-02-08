@@ -38,7 +38,11 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
 
         if (state == Auth::State::success)
         {
-            tunnel->setState(Tunnel::State::authorized);
+            tunnel->setState(Tunnel::State::authorized);            
+        }
+        else if (state == Auth::State::waitUserPassAuth)
+        {
+            tunnel->setState(Tunnel::State::waitUserPassAuth);
         }
         else if (state == Auth::State::failed)
         {
@@ -55,9 +59,31 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
             // the data received is incomplete, nothing to do here
             assert(state == Auth::State::incomplete);
         }
+    }
+    else if (tunnel->state() == Tunnel::State::waitUserPassAuth)
+    {
+        auto state = tunnel->handleUserPassAuth(inConn);
 
-        return;
-    }    
+        if (state == Auth::State::success)
+        {
+            tunnel->setState(Tunnel::State::authorized);            
+        }
+        else if (state == Auth::State::failed)
+        {
+            // authentication failed, we let client close it's connection
+            tunnel->setState(Tunnel::State::clientMustClose);            
+        }
+        else if (state == Auth::State::error)
+        {
+            // error occurred, we close client connection
+            delete tunnel;
+        }
+        else
+        {
+            // the data received is incomplete, nothing to do here
+            assert(state == Auth::State::incomplete);
+        }
+    }
     else if (tunnel->state() == Tunnel::State::authorized)
     {
         auto state = tunnel->handleRequest(inConn);
@@ -206,9 +232,19 @@ Tunnel::~Tunnel()
 Auth::State Tunnel::handleAuthentication(bufferevent *inConn)
 {
     assert(inConn == inConn_);
-    
-    Auth auth(inConn);
+
+    // FIXME
+    Auth auth(inConn, "test", "test");
     return auth.authenticate();
+}
+
+Auth::State Tunnel::handleUserPassAuth(bufferevent *inConn)
+{
+    assert(inConn == inConn_);
+
+    // FIXME
+    Auth auth(inConn, "test", "test");
+    return auth.validateUsernamePassword();
 }
 
 Request::State Tunnel::handleRequest(bufferevent *inConn)

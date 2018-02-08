@@ -12,7 +12,7 @@ struct bufferevent;
 class Auth
 {
 public:
-    enum class State { incomplete, success, failed, error };
+    enum class State { incomplete, success, failed, error, waitUserPassAuth };
     
     Auth(bufferevent *inConn);
     Auth(bufferevent *inConn, const std::string &username, const std::string &password);
@@ -26,9 +26,14 @@ public:
     
 private:
     static constexpr unsigned char      SOCKS5_VERSION          = 0x05;    
+
     static constexpr unsigned char      AUTH_NONE               = 0x00;
     static constexpr unsigned char      AUTH_USER_PASSWORD      = 0x02;        
     static constexpr unsigned char      AUTH_NO_ACCEPTABLE      = 0xFF;
+
+    static constexpr unsigned char      USER_AUTH_VERSION       = 0x01;
+    static constexpr unsigned char      USER_AUTH_SUCCESS       = 0x00;
+    static constexpr unsigned char      USER_AUTH_FAILED        = 0x01;    
     
     bufferevent                         *inConn_;
     unsigned char                       authMethod_;
