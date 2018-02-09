@@ -13,5 +13,7 @@ set(SRCS
     request.cpp
 )
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 add_executable(socks5 ${SRCS})
 target_link_libraries(socks5 event gflags glog::glog)

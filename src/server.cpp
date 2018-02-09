@@ -34,9 +34,9 @@ static void acceptCallback(evconnlistener *listener, evutil_socket_t fd,
     LOG(INFO) << "Accept new connection from: " << addr;
 
     auto base = evconnlistener_get_base(listener);
-    auto dns = static_cast<evdns_base *>(arg);
+    auto server = static_cast<Server *>(arg);
      
-    new Tunnel(base, dns, fd);       
+    new Tunnel(server->config(), base, server->dns(), fd);       
 }
 
 /**
@@ -57,8 +57,9 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
     event_base_loopexit(base, nullptr); 
 }
 
-Server::Server(const std::string &host, gflags::int32 port)
-    : base_(nullptr),
+Server::Server(const Config &config)
+    : config_(config),
+      base_(nullptr),
       listener_(nullptr),
       dns_(nullptr)
 {
@@ -74,9 +75,9 @@ Server::Server(const std::string &host, gflags::int32 port)
         LOG(FATAL) << "failed to create dns resolver";        
     }
     
-    auto portStr = std::to_string(port);
+    auto portStr = std::to_string(config.port());
     int listeningSocket = createListeningSocket(
-        host.c_str(),
+        config.host().c_str(),
         portStr.c_str()
     );
     
@@ -85,12 +86,12 @@ Server::Server(const std::string &host, gflags::int32 port)
         LOG(FATAL) << "failed to create listening socket";
     }
 
-    LOG(INFO) << "create listening socket - " << listeningSocket;
+    LOG(INFO) << "Create listening socket - " << listeningSocket;
     
     listener_ = evconnlistener_new(
         base_,
         acceptCallback,
-        dns_,
+        this,
         LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_EXEC,
         -1,
         listeningSocket
@@ -119,4 +120,14 @@ Server::~Server()
     evconnlistener_free(listener_);
     evdns_base_free(dns_, 1); 
     event_base_free(base_);    
+}
+
+Config Server::config() const
+{
+    return config_;
+}
+
+evdns_base *Server::dns() const
+{
+    return dns_;
 }

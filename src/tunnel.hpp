@@ -12,6 +12,7 @@
 
 #include "address.hpp"
 #include "auth.hpp"
+#include "config.hpp"
 #include "request.hpp"
 
 /**
@@ -31,7 +32,7 @@ public:
         clientMustClose, connected, waitForConnect
     };
     
-    Tunnel(event_base *base, evdns_base *dns, int inConnFd);
+    Tunnel(const Config &config, event_base *base, evdns_base *dns, int inConnFd);
     ~Tunnel();
 
     Tunnel(const Tunnel &) = delete;
@@ -53,6 +54,7 @@ public:
     int clientID() const;
     
 private:
+    Config                  config_;
     event_base              *base_;
     evdns_base              *dns_;
     int                     inConnFd_;    

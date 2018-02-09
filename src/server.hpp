@@ -10,6 +10,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "config.hpp"
+
 #include <gflags/gflags.h>
 
 /**
@@ -22,7 +24,7 @@ struct evdns_base;
 class Server
 {
 public:
-    Server(const std::string &host, gflags::int32 port);
+    Server(const Config &config);
     ~Server();
 
     // disable the copy operations
@@ -32,7 +34,14 @@ public:
     // run the event loop
     void run();
 
+    // Return configuration
+    Config config() const;
+
+    // Return DNS resolver 
+    evdns_base *dns() const;
+
 private:
+    Config            config_;
     event_base        *base_;           // event loop
     evconnlistener    *listener_;       // tcp listener
     evdns_base        *dns_;            // dns resolver

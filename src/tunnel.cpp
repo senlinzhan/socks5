@@ -174,8 +174,9 @@ static void closeOnWriteComplete(bufferevent *bev, void *arg)
 }
 **/
 
-Tunnel::Tunnel(event_base *base, evdns_base *dns, int inConnFd)
-    : base_(base),
+Tunnel::Tunnel(const Config &config, event_base *base, evdns_base *dns, int inConnFd)
+    : config_(config),
+      base_(base),
       dns_(dns),
       inConnFd_(inConnFd),
       inConn_(nullptr),
@@ -233,8 +234,13 @@ Auth::State Tunnel::handleAuthentication(bufferevent *inConn)
 {
     assert(inConn == inConn_);
 
-    // FIXME
-    Auth auth(inConn, "test", "test");
+    if (config_.useUserPassAuth())
+    {
+        Auth auth(inConn, config_.username(), config_.password());
+        return auth.authenticate();        
+    }
+    
+    Auth auth(inConn);
     return auth.authenticate();
 }
 
@@ -242,8 +248,13 @@ Auth::State Tunnel::handleUserPassAuth(bufferevent *inConn)
 {
     assert(inConn == inConn_);
 
-    // FIXME
-    Auth auth(inConn, "test", "test");
+    if (config_.useUserPassAuth())
+    {
+        Auth auth(inConn, config_.username(), config_.password());
+        return auth.validateUsernamePassword();        
+    }
+    
+    Auth auth(inConn);
     return auth.validateUsernamePassword();
 }
 

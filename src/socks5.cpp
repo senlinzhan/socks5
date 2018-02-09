@@ -7,6 +7,7 @@
  *
  ******************************************************************************/
 
+#include "config.hpp"
 #include "server.hpp"
 
 #include <gflags/gflags.h>
@@ -23,17 +24,32 @@ DEFINE_string(host, "localhost", "Listening host");
 DEFINE_int32(port, 6060, "Listening port");
 DEFINE_validator(port, &isValidPort);
 
+DEFINE_string(username, "", "Username for login");
+DEFINE_string(password, "", "password for login");
+
 
 int main(int argc, char *argv[])
-{
+{ 
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
-    LOG(WARNING) << "socks5 options: "
-                 << "Listening host = " << FLAGS_host << ", "
-                 << "Listening port = " << FLAGS_port;
+    Config config(
+        FLAGS_host, static_cast<unsigned short>(FLAGS_port),
+        FLAGS_username, FLAGS_password
+    );    
+    
+    LOG(WARNING) << "Socks5 options: "
+                 << "Listening host = " << config.host() << ", "
+                 << "Listening port = " << config.port();
 
-    Server server(FLAGS_host, FLAGS_port);
+    if (config.useUserPassAuth())
+    {
+        LOG(WARNING) << "Enable Username/Password authentication: "
+                     << "username = " << config.username()
+                     << ", password = " << config.password();
+    }
+
+    Server server(config);
     server.run();
     
     return 0;
