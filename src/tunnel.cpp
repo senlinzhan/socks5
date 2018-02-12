@@ -9,6 +9,7 @@
 
 #include "auth.hpp"
 #include "tunnel.hpp"
+#include "cipher.hpp"
 
 #include <assert.h>
 
