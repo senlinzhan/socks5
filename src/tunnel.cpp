@@ -182,7 +182,8 @@ Tunnel::Tunnel(const Config &config, event_base *base, evdns_base *dns, int inCo
       inConnFd_(inConnFd),
       inConn_(nullptr),
       outConn_(nullptr),
-      state_(State::init)
+      state_(State::init),
+      cryptor_(config_.key(), "0000000000000000")
 {
     evutil_make_socket_nonblocking(inConnFd_);
 
@@ -248,14 +249,9 @@ Auth::State Tunnel::handleAuthentication(bufferevent *inConn)
 Auth::State Tunnel::handleUserPassAuth(bufferevent *inConn)
 {
     assert(inConn == inConn_);
+    assert(config_.useUserPassAuth());
 
-    if (config_.useUserPassAuth())
-    {
-        Auth auth(inConn, config_.username(), config_.password());
-        return auth.validateUsernamePassword();        
-    }
-    
-    Auth auth(inConn);
+    Auth auth(inConn, config_.username(), config_.password());
     return auth.validateUsernamePassword();
 }
 

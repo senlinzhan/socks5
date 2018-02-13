@@ -10,19 +10,35 @@
 class Config
 {
 public:
+    enum class Mode { client, server };
+
     using Pair = std::pair<std::string, std::string>;
     
     Config(const std::string &host, unsigned short port,
-           const std::string &username, const std::string &password)
+           const std::string &username, const std::string &password,
+           const std::string &key, const std::string &mode)
         : host_(host),
           port_(port),
-          userPassAuth_(nullptr)
+          userPassAuth_(nullptr),
+          key_(key)
     {
         assert(!host_.empty());
-
+        assert(!key_.empty());
+        
+        assert(mode == "client" || mode == "server");
+        
         if (!username.empty() && !password.empty())
         {
             userPassAuth_ = std::make_shared<Pair>(username, password);
+        }
+        
+        if (mode == "client")
+        {
+            mode_ = Mode::client;
+        }
+        else
+        {
+            mode_ = Mode::server;
         }
     }
 
@@ -54,11 +70,23 @@ public:
 
         return std::get<1>(*userPassAuth_);        
     }
+
+    std::string key() const
+    {
+        return key_;
+    }
+
+    Mode mode() const
+    {
+        return mode_;
+    }
     
 private:    
     std::string             host_;
     unsigned short          port_;
     std::shared_ptr<Pair>   userPassAuth_;
+    std::string             key_;
+    Mode                    mode_;
 };
 
 #endif /* CONFIG_H */

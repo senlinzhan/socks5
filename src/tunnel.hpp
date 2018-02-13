@@ -13,6 +13,7 @@
 #include "address.hpp"
 #include "auth.hpp"
 #include "config.hpp"
+#include "cipher.hpp"
 #include "request.hpp"
 
 /**
@@ -61,6 +62,7 @@ private:
     bufferevent             *inConn_;
     bufferevent             *outConn_;
     State                   state_;
+    Cryptor                 cryptor_;
 };
 
 #endif /* TUNNEL_H */

@@ -1,10 +1,13 @@
 #ifndef CIPHER_H
 #define CIPHER_H
 
+#include "assert.h"
+
 #include <array>
 #include <memory>
 #include <vector>
 #include <functional>
+#include <string>
 
 #include <openssl/conf.h>
 #include <openssl/evp.h>
@@ -30,6 +33,22 @@ public:
         : key_(key),
           iv_(iv)
     {        
+    }
+
+    Cryptor(const std::string &key, const std::string &iv)
+    {
+        assert(key.size() == KEY_SIZE);
+        assert(iv.size() == BLOCK_SIZE);
+
+        for (int i = 0; i < KEY_SIZE; i++)
+        {
+            key_[i] = static_cast<Byte>(key[i]);            
+        }
+
+        for (int i = 0; i < BLOCK_SIZE; i++)
+        {
+            iv_[i] = static_cast<Byte>(iv[i]);
+        }        
     }
     
     std::unique_ptr<Buffer> encrypt(const Byte *in, std::size_t inLength)
@@ -99,8 +118,8 @@ public:
     }
     
 private:
-    const Key  key_;
-    const IV   iv_;
+    Key  key_;
+    IV   iv_;
 };
 
 #endif /* CIPHER_H */
