@@ -8,7 +8,8 @@ include_directories ("/usr/local/opt/openssl/include" )
 include_directories (${gflags_INCLUDE_DIR})
 
 add_executable(cipher_test cipher_test.cpp)
-
 target_link_libraries(cipher_test ${GTEST_BOTH_LIBRARIES})
+target_link_libraries(cipher_test ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(cipher_test ssl crypto)
 
 add_test(Test cipher_test)

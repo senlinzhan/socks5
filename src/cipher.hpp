@@ -31,7 +31,6 @@ public:
           iv_(iv)
     {        
     }
-
     
     std::unique_ptr<Buffer> encrypt(const Byte *in, std::size_t inLength)
     {
