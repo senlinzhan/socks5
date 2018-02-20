@@ -5,4 +5,4 @@ set(SRCS
     address.cpp
     sockets.cpp)
 
-add_library (common ${SRCS})
+add_library (basic ${SRCS})

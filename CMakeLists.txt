@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -Wall -Wunused-variable -W
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
-set(SUBDIRS server common local test)
+set(SUBDIRS server basic local test)
  
 foreach(dir ${SUBDIRS})
     add_subdirectory(${dir})
