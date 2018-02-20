@@ -20,6 +20,7 @@
     Returns the listening socket descriptor on success, -1 on failure
  **/
 int createListeningSocket(const char *hostname, const char *service);
+int createListeningSocket(const std::string &hostname, const std::string &service);
 
 Address getSocketLocalAddress(int fd);
 

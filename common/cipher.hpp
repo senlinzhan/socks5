@@ -1,7 +1,7 @@
 #ifndef CIPHER_H
 #define CIPHER_H
 
-#include "assert.h"
+#include <assert.h>
 
 #include <array>
 #include <memory>
@@ -11,7 +11,10 @@
 
 #include <openssl/conf.h>
 #include <openssl/evp.h>
- 
+
+#include <event2/buffer.h>
+#include <event2/bufferevent.h>
+
 class Cryptor
 {
 public:
@@ -25,6 +28,8 @@ public:
 
     using Byte         = unsigned char;
     using Buffer       = std::vector<Byte>;
+    using BufferPtr    = std::unique_ptr<Buffer>;
+    
     using Key          = std::array<Byte, KEY_SIZE>;
     using IV           = std::array<Byte, BLOCK_SIZE>;
     using ContextPtr   = std::unique_ptr<EVP_CIPHER_CTX, std::function<void (EVP_CIPHER_CTX *)>>; 
@@ -51,7 +56,7 @@ public:
         }        
     }
     
-    std::unique_ptr<Buffer> encrypt(const Byte *in, std::size_t inLength)
+    BufferPtr encrypt(const Byte *in, std::size_t inLength) const
     {
         ContextPtr ctx(EVP_CIPHER_CTX_new(), contextDeleter);
         if (ctx == nullptr)
@@ -65,7 +70,7 @@ public:
         }
 
         int length = 0;                
-        auto result = std::unique_ptr<Buffer>(new Buffer(inLength + BLOCK_SIZE, 0));
+        auto result = BufferPtr(new Buffer(inLength + BLOCK_SIZE, 0));
 
         if(EVP_EncryptUpdate(ctx.get(), result->data(), &length, in, inLength) != 1)
         {
@@ -83,8 +88,8 @@ public:
 
         return result;
     }
-
-    std::unique_ptr<Buffer> decrypt(const Byte *in, std::size_t inLength)
+    
+    BufferPtr decrypt(const Byte *in, std::size_t inLength) const
     {
         ContextPtr ctx(EVP_CIPHER_CTX_new(), contextDeleter);
         if (ctx == nullptr)
@@ -98,7 +103,7 @@ public:
         }
 
         int length = 0;        
-        auto result = std::unique_ptr<Buffer>(new Buffer(inLength, 0));
+        auto result = BufferPtr(new Buffer(inLength, 0));
         
         if(EVP_DecryptUpdate(ctx.get(), result->data(), &length, in, inLength) != 1)
         {
@@ -121,5 +126,10 @@ private:
     Key  key_;
     IV   iv_;
 };
+
+bool decryptTransfer(const Cryptor &cryptor, bufferevent *inConn, bufferevent *outConn);
+
+
+bool encryptTransfer(const Cryptor &cryptor, bufferevent *inConn, bufferevent *outConn);
 
 #endif /* CIPHER_H */

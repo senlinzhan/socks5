@@ -84,10 +84,6 @@ Auth::State Auth::authenticate()
     std::vector<unsigned char> methods(nmethods, 0);
     evbuffer_remove(inBuff, methods.data(), nmethods);
     
-    /* 
-     * FIXME: we only support NO AUTHENTICATION here, 
-     * add username/password authentication
-     */    
     for (auto method: methods)
     {   
         if (supportMethods_.find(method) != supportMethods_.end())

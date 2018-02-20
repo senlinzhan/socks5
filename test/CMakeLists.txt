@@ -3,7 +3,7 @@ enable_testing()
 find_package (openssl REQUIRED)
 find_package (gflags REQUIRED)
 
-include_directories(${GTEST_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/src)
+include_directories(${GTEST_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/common)
 include_directories ("/usr/local/opt/openssl/include" )
 include_directories (${gflags_INCLUDE_DIR})
 

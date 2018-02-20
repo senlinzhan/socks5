@@ -57,6 +57,11 @@ int createListeningSocket(const char *hostname, const char *service)
     return sockfd;    
 }
 
+int createListeningSocket(const std::string &hostname, const std::string &service)
+{
+    return createListeningSocket(hostname.c_str(), service.c_str());
+}
+
 Address getSocketLocalAddress(int fd)
 {
     struct sockaddr_storage addr;

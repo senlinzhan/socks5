@@ -24,11 +24,6 @@ static bool isValidSecretKey(const char *flagname, const std::string &value)
 {
     // FIXME: key length may change
     return value.size() == Cryptor::KEY_SIZE;
-} 
-
-static bool isValidMode(const char *flagname, const std::string &value)
-{
-    return value == "client" || value == "server";
 }
 
 DEFINE_string(host, "localhost", "Listening host");
@@ -42,9 +37,6 @@ DEFINE_string(password, "", "Password for login <optional>");
 DEFINE_string(key, "", "Secret key");
 DEFINE_validator(key, &isValidSecretKey);
 
-DEFINE_string(mode, "", "Working mode <client or server>");
-DEFINE_validator(mode, &isValidMode);
-
 int main(int argc, char *argv[])
 { 
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -52,8 +44,8 @@ int main(int argc, char *argv[])
 
     Config config(
         FLAGS_host, static_cast<unsigned short>(FLAGS_port),
-        FLAGS_username, FLAGS_password, FLAGS_key, FLAGS_mode
-    );    
+        FLAGS_username, FLAGS_password, FLAGS_key
+    );     
     
     LOG(WARNING) << "Socks5 options: "
                  << "Listening host = " << config.host() << ", "

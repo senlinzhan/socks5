@@ -43,9 +43,7 @@ static void acceptCallback(evconnlistener *listener, evutil_socket_t fd,
    Called when server accept failed
  **/
 static void acceptErrorCallback(evconnlistener *listener, void *arg)
-{
-    auto base = evconnlistener_get_base(listener);
-        
+{        
     int err = EVUTIL_SOCKET_ERROR();
     LOG(ERROR) << "got an error on the listener: "
                << evutil_socket_error_to_string(err);
@@ -54,6 +52,7 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
        tells the event_base to stop looping 
        and still running callbacks for any active events
     **/
+    auto base = evconnlistener_get_base(listener);    
     event_base_loopexit(base, nullptr); 
 }
 
