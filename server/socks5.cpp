@@ -20,13 +20,15 @@ static bool isValidPort(const char* flagname, gflags::int32 value)
     return (value > 0 && value < 65536);
 }
 
+/**
 static bool isValidSecretKey(const char *flagname, const std::string &value)
 {
     // FIXME: key length may change
     return value.size() == Cryptor::KEY_SIZE;
 }
+**/
 
-DEFINE_string(host, "localhost", "Listening host");
+DEFINE_string(host, "0.0.0.0", "Listening host");
 
 DEFINE_int32(port, 6060, "Listening port");
 DEFINE_validator(port, &isValidPort);
@@ -34,8 +36,9 @@ DEFINE_validator(port, &isValidPort);
 DEFINE_string(username, "", "Username for login <optional>");
 DEFINE_string(password, "", "Password for login <optional>");
 
-DEFINE_string(key, "", "Secret key");
-DEFINE_validator(key, &isValidSecretKey);
+// DEFINE_string(key, "", "Secret key");
+DEFINE_string(key, "12345678123456781234567812345678", "Secret key");
+// DEFINE_validator(key, &isValidSecretKey);
 
 int main(int argc, char *argv[])
 { 

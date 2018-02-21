@@ -39,7 +39,9 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
 
         if (state == Auth::State::success)
         {
-            tunnel->setState(Tunnel::State::authorized);            
+            tunnel->setState(Tunnel::State::authorized);
+            LOG(INFO) << "Handle Authentication for client-" << clientID
+                      << " successful";
         }
         else if (state == Auth::State::waitUserPassAuth)
         {
@@ -48,7 +50,7 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
         else if (state == Auth::State::failed)
         {
             // authentication failed, we let client close it's connection
-            tunnel->setState(Tunnel::State::clientMustClose);            
+            tunnel->setState(Tunnel::State::clientMustClose);
         }
         else if (state == Auth::State::error)
         {
@@ -87,13 +89,19 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
     }
     else if (tunnel->state() == Tunnel::State::authorized)
     {
+        LOG(INFO) << "Handle Authentication for client-" << clientID;
+        
         auto state = tunnel->handleRequest(inConn);
         if (state == Request::State::success)
         {
             tunnel->setState(Tunnel::State::waitForConnect);
+            LOG(INFO) << "Handle Request for client-" << clientID
+                      << " successful";            
         }
         else if (state == Request::State::error)
         {
+            LOG(INFO) << "Handle Request for client-" << clientID
+                      << " error";            
             delete tunnel;
         }
         else
@@ -238,11 +246,11 @@ Auth::State Tunnel::handleAuthentication(bufferevent *inConn)
 
     if (config_.useUserPassAuth())
     {
-        Auth auth(inConn, config_.username(), config_.password());
+        Auth auth(cryptor_, inConn, config_.username(), config_.password());
         return auth.authenticate();        
     }
     
-    Auth auth(inConn);
+    Auth auth(cryptor_, inConn);
     return auth.authenticate();
 }
 
@@ -251,7 +259,7 @@ Auth::State Tunnel::handleUserPassAuth(bufferevent *inConn)
     assert(inConn == inConn_);
     assert(config_.useUserPassAuth());
 
-    Auth auth(inConn, config_.username(), config_.password());
+    Auth auth(cryptor_, inConn, config_.username(), config_.password());
     return auth.validateUsernamePassword();
 }
 
@@ -259,7 +267,7 @@ Request::State Tunnel::handleRequest(bufferevent *inConn)
 {
     assert(inConn == inConn_);
     
-    Request request(dns_, this);
+    Request request(cryptor_, dns_, this);
     return request.handleRequest();
 }
 

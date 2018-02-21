@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <array>
+#include <algorithm>
 
 #include <glog/logging.h>
 
@@ -12,8 +13,9 @@
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
  
-Request::Request(evdns_base *dns, Tunnel *tunnel)
-    : dns_(dns),
+Request::Request(const Cryptor &cryptor, evdns_base *dns, Tunnel *tunnel)
+    : cryptor_(cryptor),
+      dns_(dns),
       tunnel_(tunnel)
 {    
     assert(dns_ != nullptr);
@@ -38,21 +40,21 @@ Request::State Request::handleRequest()
         return State::error;
     }
 
-    auto inBuff = bufferevent_get_input(inConn_);
-    auto inBuffLength = evbuffer_get_length(inBuff);
-    
-    if (inBuffLength < 4)
+    auto data = cryptor_.decryptFrom(inConn_);
+    if (data == nullptr)
+    {
+        return State::error;
+    }
+
+    auto size = data->size();
+    if (size < 4)
     {
         return State::incomplete;
     }
-
-    // copy the first 4 bytes
-    unsigned char request[4];    
-    evbuffer_copyout(inBuff, request, 4);
     
-    unsigned char version = request[0];
-    unsigned char command = request[1];
-    unsigned char addressType = request[3];
+    unsigned char version = (*data)[0];
+    unsigned char command = (*data)[1];
+    unsigned char addressType = (*data)[3];
 
     // check protocol version
     if (version != SOCKS5_VERSION)
@@ -61,13 +63,12 @@ Request::State Request::handleRequest()
     }
 
     Address address;
-    auto state = readAddress(addressType, address);
+    auto state = readAddress(addressType, address, data);
     if (state != State::success)
     {
         return state;
     }
-
-    assert(evbuffer_get_length(inBuff) == 0);
+    cryptor_.removeFrom(inConn_);
     
     if (command == CMD_CONNECT)
     {
@@ -98,7 +99,7 @@ Request::State Request::handleRequest()
      State::success      read address success
      State::error        an error occurred
 **/
-Request::State Request::readAddress(unsigned char addressType, Address &address)
+Request::State Request::readAddress(unsigned char addressType, Address &address, Cryptor::BufferPtr &data)
 {
     // check address type
     if (addressType != ADDRESS_TYPE_IPV4 &&
@@ -109,74 +110,62 @@ Request::State Request::readAddress(unsigned char addressType, Address &address)
         return State::error;
     }
     
-    auto inBuff = bufferevent_get_input(inConn_);
-    auto inBuffLength = evbuffer_get_length(inBuff);
-
     unsigned short port;
     if (addressType == ADDRESS_TYPE_IPV4)
     {
-        if (inBuffLength < 10)
+        if (data->size() < 10)
         {
             return State::incomplete;
         }
-        else if (inBuffLength > 10)
+        else if (data->size() > 10)
         {
             return State::error;
         }
-        
-        evbuffer_drain(inBuff, 4);
 
-        std::array<unsigned char, 4> rawAddr;
-        evbuffer_remove(inBuff, &rawAddr[0], rawAddr.size());
-        evbuffer_remove(inBuff, &port, 2);
+        std::array<unsigned char, 4> rawAddr;        
+        std::copy(data->begin() + 4, data->begin() + 8, rawAddr.data());
+        std::copy(data->begin() + 8, data->end(), &port);        
 
         address = Address(rawAddr, port);
     }
     else if (addressType == ADDRESS_TYPE_IPV6)
     {
-        if (inBuffLength < 22)
+        if (data->size() < 22)
         {
             return State::incomplete;
         }
-        else if (inBuffLength > 22)
+        else if (data->size() > 22)
         {
             return State::error;
         }
         
-        evbuffer_drain(inBuff, 4);
-
         std::array<unsigned char, 16> rawAddr;
-        evbuffer_remove(inBuff, &rawAddr[0], rawAddr.size());
-        evbuffer_remove(inBuff, &port, 2);
-
+        std::copy(data->begin() + 4, data->begin() + 20, rawAddr.data());
+        std::copy(data->begin() + 20, data->end(), &port);
+        
         address = Address(rawAddr, port);
     }
     else
     {
-        if (inBuffLength < 5)
+        if (data->size() < 5)
         {
             return State::incomplete;
-        }
-        
-        unsigned char data[5];        
-        evbuffer_copyout(inBuff, data, 5);
+        }        
 
-        int domainLength = data[4];
-        if (inBuffLength < domainLength + 7)
+        int domainLength = (*data)[4];
+        if (data->size() < domainLength + 7)
         {
             return State::incomplete;
         }
-        else if (inBuffLength > domainLength + 7)
+        else if (data->size() > domainLength + 7)
         {
             return State::error;            
         }
 
         std::string domain(domainLength, '\0');
+        std::copy(data->begin() + 5, data->begin() + 5 + domainLength, &domain[0]);
+        std::copy(data->begin() + 5 + domainLength, data->end(), &port);
         
-        evbuffer_drain(inBuff, 5);
-        evbuffer_remove(inBuff, &domain[0], domain.size());
-        evbuffer_remove(inBuff, &port, 2); 
-
         address = Address(domain, port);
     }
 
@@ -217,35 +206,36 @@ void Request::sendReply(bufferevent *inConn, unsigned char code, const Address &
     if (address.type() == Address::Type::ipv4)
     {
         reply[3] = ADDRESS_TYPE_IPV4;
-        bufferevent_write(inConn, reply, 4);
+
+        cryptor_.encryptTo(inConn, reply, 4);
         
         auto ip = address.toRawIPv4();
-        auto port = address.portNetworkOrder();
-        
-        bufferevent_write(inConn, ip.data(), ip.size());
-        bufferevent_write(inConn, &port, 2);                    
+        auto port = address.rawPortNetworkOrder();
+
+        cryptor_.encryptTo(inConn, ip.data(), ip.size());
+        cryptor_.encryptTo(inConn, port.data(), port.size());
     }
     else if (address.type() == Address::Type::ipv6)
     {
         reply[3] = ADDRESS_TYPE_IPV6;
-        bufferevent_write(inConn, reply, 4);
+        cryptor_.encryptTo(inConn, reply, 4);
 
         auto ip = address.toRawIPv6();
-        auto port = address.portNetworkOrder();
+        auto port = address.rawPortNetworkOrder();
         
-        bufferevent_write(inConn, ip.data(), ip.size());
-        bufferevent_write(inConn, &port, 2);        
+        cryptor_.encryptTo(inConn, ip.data(), ip.size());
+        cryptor_.encryptTo(inConn, port.data(), port.size());
     }
     else
     {
-        reply[3] = ADDRESS_TYPE_IPV4;        
-        bufferevent_write(inConn, reply, 4);
+        reply[3] = ADDRESS_TYPE_IPV4;
+        cryptor_.encryptTo(inConn, reply, 4);
         
         std::array<unsigned char, 4> ip = {{ 0, 0, 0, 0 }};
-        unsigned short port = 0;
-
-        bufferevent_write(inConn, ip.data(), ip.size());
-        bufferevent_write(inConn, &port, 2);
+        std::array<unsigned char, 2> port = {{ 0, 0 }};
+        
+        cryptor_.encryptTo(inConn, ip.data(), ip.size());
+        cryptor_.encryptTo(inConn, port.data(), port.size());
     }
 }
 

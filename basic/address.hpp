@@ -59,6 +59,8 @@ public:
 
     // Return port in network byte order
     unsigned short portNetworkOrder() const;
+
+    std::array<unsigned char, 2> rawPortNetworkOrder() const;
     
 private:
     Type          type_;

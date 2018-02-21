@@ -47,11 +47,16 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
     
     if (what & BEV_EVENT_EOF)
     {
+        LOG(INFO) << "Connection closed by proxy server";
         delete conn;
     }
 
     if (what & BEV_EVENT_ERROR)
     {
+        int err = EVUTIL_SOCKET_ERROR();
+        LOG(ERROR) << "Connection to proxy server error: " 
+                   << evutil_socket_error_to_string(err);
+        
         delete conn;
     }    
 }
@@ -76,20 +81,20 @@ Connection::Connection(event_base *base, evdns_base *dns, int inConnFd,
     }
     bufferevent_setcb(inConn_, inConnReadCallback, nullptr, inConnEventCallback, this);
     
-    auto outConn = bufferevent_socket_new(
+    outConn_ = bufferevent_socket_new(
         base,
         -1,
         BEV_OPT_CLOSE_ON_FREE
     );
-    if (outConn == nullptr)
+    if (outConn_ == nullptr)
     {
         int err = EVUTIL_SOCKET_ERROR();
         LOG(ERROR) << "Create outgoing connection for client-" << inConnFd_
                    << " failed: " << evutil_socket_error_to_string(err);
         return;
     }
-    bufferevent_setcb(outConn, outConnReadCallback, nullptr, outConnEventCallback, this);
-    if (bufferevent_socket_connect_hostname(outConn, dns_, AF_INET,
+    bufferevent_setcb(outConn_, outConnReadCallback, nullptr, outConnEventCallback, this);
+    if (bufferevent_socket_connect_hostname(outConn_, dns_, AF_INET,
                                             remoteHost.c_str(), remotePort) == -1)
     {
         int err = EVUTIL_SOCKET_ERROR();
@@ -99,7 +104,7 @@ Connection::Connection(event_base *base, evdns_base *dns, int inConnFd,
     }
     
     bufferevent_enable(inConn_, EV_READ | EV_WRITE);    
-    bufferevent_enable(outConn, EV_READ | EV_WRITE);    
+    bufferevent_enable(outConn_, EV_READ | EV_WRITE);    
 }
 
 Connection::~Connection()
@@ -118,10 +123,10 @@ Connection::~Connection()
 
 void Connection::encryptTransfer()
 { 
-    ::encryptTransfer(cryptor_, inConn_, outConn_);
+    cryptor_.encryptTransfer(inConn_, outConn_);
 }
 
 void Connection::decryptTransfer()
 {
-    ::decryptTransfer(cryptor_, inConn_, outConn_);
+    cryptor_.decryptTransfer(outConn_, inConn_))
 }

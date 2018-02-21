@@ -34,102 +34,61 @@ public:
     using IV           = std::array<Byte, BLOCK_SIZE>;
     using ContextPtr   = std::unique_ptr<EVP_CIPHER_CTX, std::function<void (EVP_CIPHER_CTX *)>>; 
     
-    Cryptor(const Key &key, const IV &iv)        
+    Cryptor(const Key &key, const IV &iv)
         : key_(key),
           iv_(iv)
-    {        
-    }
+    {    
+    }        
 
-    Cryptor(const std::string &key, const std::string &iv)
-    {
-        assert(key.size() == KEY_SIZE);
-        assert(iv.size() == BLOCK_SIZE);
+    Cryptor(const std::string &key, const std::string &iv);
 
-        for (int i = 0; i < KEY_SIZE; i++)
-        {
-            key_[i] = static_cast<Byte>(key[i]);            
-        }
+    /**
+       Encrypt data - return the encrypted data on success, nullptr on failed
+     **/
+    BufferPtr encrypt(const Byte *in, std::size_t inLength) const;
 
-        for (int i = 0; i < BLOCK_SIZE; i++)
-        {
-            iv_[i] = static_cast<Byte>(iv[i]);
-        }        
-    }
+    /**
+       Decrypt data - return the decrypted data on success, nullptr on failed
+     **/    
+    BufferPtr decrypt(const Byte *in, std::size_t inLength) const;
+
+    /**
+       Decrypt data and transfer data from inConn to outConn,
+       return true on success, false on failed
+     **/
+    bool decryptTransfer(bufferevent *inConn, bufferevent *outConn) const;
+
+    /**
+       Encrypt data and transfer data from inConn to outConn,
+       return true on success, false on failed
+     **/
+    bool encryptTransfer(bufferevent *inConn, bufferevent *outConn) const;
+
+    /**
+       Read data from conn and decrypt the data,
+       return the data on success, nullptr on failed       
+     **/
+    BufferPtr decryptFrom(bufferevent *conn) const;
+
+    /**
+       Encrypt data and send the data to conn,
+       return true on success, nullptr on failed
+     **/
+    bool encryptTo(bufferevent *conn, const Byte *in, std::size_t inLength) const;
     
-    BufferPtr encrypt(const Byte *in, std::size_t inLength) const
-    {
-        ContextPtr ctx(EVP_CIPHER_CTX_new(), contextDeleter);
-        if (ctx == nullptr)
-        {
-            return nullptr;
-        }
+    /**
+       Read data from conn and return the data 
+     **/
+    Buffer readFrom(bufferevent *conn) const;
 
-        if(EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_cbc(), nullptr, key_.data(), iv_.data()) != 1)
-        {
-            return nullptr;
-        }
+    /**
+       Remove data from conn and return the data
+     **/
+    Buffer removeFrom(bufferevent *conn) const;
 
-        int length = 0;                
-        auto result = BufferPtr(new Buffer(inLength + BLOCK_SIZE, 0));
-
-        if(EVP_EncryptUpdate(ctx.get(), result->data(), &length, in, inLength) != 1)
-        {
-            return nullptr;
-        }
-        
-        int outLength = length;        
-        if(EVP_EncryptFinal_ex(ctx.get(), result->data() + length, &length) != 1)
-        {
-            return nullptr;
-        }
-        
-        outLength += length;
-        result->resize(outLength);
-
-        return result;
-    }
-    
-    BufferPtr decrypt(const Byte *in, std::size_t inLength) const
-    {
-        ContextPtr ctx(EVP_CIPHER_CTX_new(), contextDeleter);
-        if (ctx == nullptr)
-        {
-            return nullptr;
-        }
-        
-        if(EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_cbc(), nullptr, key_.data(), iv_.data()) != 1)
-        {
-            return nullptr;
-        }
-
-        int length = 0;        
-        auto result = BufferPtr(new Buffer(inLength, 0));
-        
-        if(EVP_DecryptUpdate(ctx.get(), result->data(), &length, in, inLength) != 1)
-        {
-            return nullptr;
-        }
-        
-        int outLength = length;
-        if(EVP_DecryptFinal_ex(ctx.get(), result->data() + length, &length) != 1)
-        {
-            return nullptr;
-        }
-        
-        outLength += length;
-        result->resize(outLength);
-
-        return result;
-    }
-    
-private:
+private:    
     Key  key_;
     IV   iv_;
 };
-
-bool decryptTransfer(const Cryptor &cryptor, bufferevent *inConn, bufferevent *outConn);
-
-
-bool encryptTransfer(const Cryptor &cryptor, bufferevent *inConn, bufferevent *outConn);
 
 #endif /* CIPHER_H */

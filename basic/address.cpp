@@ -128,3 +128,11 @@ unsigned short Address::portNetworkOrder() const
 {
     return htons(port_);
 }
+
+std::array<unsigned char, 2> Address::rawPortNetworkOrder() const
+{
+    auto networkOrder = portNetworkOrder();
+    auto ptr = reinterpret_cast<unsigned char *>(networkOrder);
+    
+    return {{ *ptr, *(ptr + 1) }};
+}

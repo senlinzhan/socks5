@@ -1,6 +1,7 @@
 #ifndef REQUEST_H
 #define REQUEST_H
 
+#include "cipher.hpp"
 #include "address.hpp"
 
 /**
@@ -35,7 +36,7 @@ public:
     
     enum class State {incomplete, success, error};
     
-    Request(evdns_base *dns, Tunnel *tunnel);
+    Request(const Cryptor &cryptor, evdns_base *dns, Tunnel *tunnel);
 
     // disable the copy operations
     Request(const Request &) = delete;
@@ -45,16 +46,16 @@ public:
     State handleRequest();
 
     // Send reply to client when error occured
-    static void replyForError(bufferevent *inConn, unsigned char code);   
+    void replyForError(bufferevent *inConn, unsigned char code);   
     
     // Send reply to client connection when success
-    static void replyForSuccess(bufferevent *inConn, const Address &address);    
+    void replyForSuccess(bufferevent *inConn, const Address &address);    
 private:
     // Send reply to client connection
-    static void sendReply(bufferevent *inConn, unsigned char code, const Address &address);
+    void sendReply(bufferevent *inConn, unsigned char code, const Address &address);
     
     // Read destination address
-    State readAddress(unsigned char addressType, Address &address);
+    State readAddress(unsigned char addressType, Address &address, Cryptor::BufferPtr &data);
 
     // Handle CONNECT command
     State handleConnect(const Address &address);
@@ -64,7 +65,8 @@ private:
 
     // Handle UDP ASSOCIATE command
     State handleUDPAssociate();
- 
+
+    Cryptor       cryptor_;
     evdns_base    *dns_;
     Tunnel        *tunnel_;
     bufferevent   *inConn_;
