@@ -128,5 +128,5 @@ void Connection::encryptTransfer()
 
 void Connection::decryptTransfer()
 {
-    cryptor_.decryptTransfer(outConn_, inConn_))
+    cryptor_.decryptTransfer(outConn_, inConn_);
 }

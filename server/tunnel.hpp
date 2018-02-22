@@ -53,6 +53,11 @@ public:
     void setOutConnection(bufferevent *outConn);
 
     int clientID() const;
+
+    Cryptor cryptor() const
+    {
+        return cryptor_;
+    }
     
 private:
     Config                  config_;

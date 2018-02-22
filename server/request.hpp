@@ -46,13 +46,13 @@ public:
     State handleRequest();
 
     // Send reply to client when error occured
-    void replyForError(bufferevent *inConn, unsigned char code);   
+    static void replyForError(const Cryptor &cryptor, bufferevent *inConn, unsigned char code);   
     
     // Send reply to client connection when success
-    void replyForSuccess(bufferevent *inConn, const Address &address);    
+    static void replyForSuccess(const Cryptor &cryptor, bufferevent *inConn, const Address &address);
 private:
     // Send reply to client connection
-    void sendReply(bufferevent *inConn, unsigned char code, const Address &address);
+    static void sendReply(const Cryptor &cryptor, bufferevent *inConn, unsigned char code, const Address &address);
     
     // Read destination address
     State readAddress(unsigned char addressType, Address &address, Cryptor::BufferPtr &data);

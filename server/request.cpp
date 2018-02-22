@@ -84,7 +84,7 @@ Request::State Request::handleRequest()
     }
     else
     {
-        replyForError(inConn_, REPLY_COMMAND_NOT_SUPPORTED);
+        replyForError(cryptor_, inConn_, REPLY_COMMAND_NOT_SUPPORTED);
         return State::error;        
     }
     
@@ -106,7 +106,7 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
         addressType != ADDRESS_TYPE_IPV6 &&
         addressType != ADDRESS_TYPE_DOMAIN_NAME)
     {
-        replyForError(inConn_, REPLY_ADDRESS_TYPE_NOT_SUPPORTED);        
+        replyForError(cryptor_, inConn_, REPLY_ADDRESS_TYPE_NOT_SUPPORTED);        
         return State::error;
     }
     
@@ -178,24 +178,24 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
     return State::success;
 }
 
-void Request::replyForError(bufferevent *inConn, unsigned char code)
+void Request::replyForError(const Cryptor &cryptor, bufferevent *inConn, unsigned char code)
 {
     assert(inConn != nullptr);
     assert(code != REPLY_SUCCESS);
      
-    return sendReply(inConn, code, Address());
+    return sendReply(cryptor, inConn, code, Address());
 }
 
-void Request::replyForSuccess(bufferevent *inConn, const Address &address)
+void Request::replyForSuccess(const Cryptor &cryptor, bufferevent *inConn, const Address &address)
 {
     assert(inConn != nullptr);
     assert(address.type() != Address::Type::domain);
     assert(address.type() != Address::Type::unknown);
     
-    return sendReply(inConn, REPLY_SUCCESS, address);
+    return sendReply(cryptor, inConn, REPLY_SUCCESS, address);
 }
 
-void Request::sendReply(bufferevent *inConn, unsigned char code, const Address &address)
+void Request::sendReply(const Cryptor &cryptor, bufferevent *inConn, unsigned char code, const Address &address)
 {
     unsigned char reply[4];
 
@@ -207,35 +207,35 @@ void Request::sendReply(bufferevent *inConn, unsigned char code, const Address &
     {
         reply[3] = ADDRESS_TYPE_IPV4;
 
-        cryptor_.encryptTo(inConn, reply, 4);
+        cryptor.encryptTo(inConn, reply, 4);
         
         auto ip = address.toRawIPv4();
         auto port = address.rawPortNetworkOrder();
 
-        cryptor_.encryptTo(inConn, ip.data(), ip.size());
-        cryptor_.encryptTo(inConn, port.data(), port.size());
+        cryptor.encryptTo(inConn, ip.data(), ip.size());
+        cryptor.encryptTo(inConn, port.data(), port.size());
     }
     else if (address.type() == Address::Type::ipv6)
     {
         reply[3] = ADDRESS_TYPE_IPV6;
-        cryptor_.encryptTo(inConn, reply, 4);
+        cryptor.encryptTo(inConn, reply, 4);
 
         auto ip = address.toRawIPv6();
         auto port = address.rawPortNetworkOrder();
         
-        cryptor_.encryptTo(inConn, ip.data(), ip.size());
-        cryptor_.encryptTo(inConn, port.data(), port.size());
+        cryptor.encryptTo(inConn, ip.data(), ip.size());
+        cryptor.encryptTo(inConn, port.data(), port.size());
     }
     else
     {
         reply[3] = ADDRESS_TYPE_IPV4;
-        cryptor_.encryptTo(inConn, reply, 4);
+        cryptor.encryptTo(inConn, reply, 4);
         
         std::array<unsigned char, 4> ip = {{ 0, 0, 0, 0 }};
         std::array<unsigned char, 2> port = {{ 0, 0 }};
         
-        cryptor_.encryptTo(inConn, ip.data(), ip.size());
-        cryptor_.encryptTo(inConn, port.data(), port.size());
+        cryptor.encryptTo(inConn, ip.data(), ip.size());
+        cryptor.encryptTo(inConn, port.data(), port.size());
     }
 }
 
@@ -249,7 +249,7 @@ void Request::sendReply(bufferevent *inConn, unsigned char code, const Address &
 Request::State Request::handleBind()
 {
     // FIXME: support BIND command
-    replyForError(inConn_, REPLY_COMMAND_NOT_SUPPORTED);
+    replyForError(cryptor_, inConn_, REPLY_COMMAND_NOT_SUPPORTED);
     
     return State::error;
 }
@@ -264,7 +264,7 @@ Request::State Request::handleBind()
 Request::State Request::handleUDPAssociate()
 {
     // FIXME: support UDP ASSOCIATE command
-    replyForError(inConn_, REPLY_COMMAND_NOT_SUPPORTED);
+    replyForError(cryptor_, inConn_, REPLY_COMMAND_NOT_SUPPORTED);
     
     return State::error;
 }
@@ -307,14 +307,14 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
         if (addr.type() == Address::Type::ipv4 ||
             addr.type() == Address::Type::ipv6)
         {
-            Request::replyForSuccess(inConn, addr);
+            Request::replyForSuccess(tunnel->cryptor(), inConn, addr);
             tunnel->setState(Tunnel::State::connected);
             
             LOG(INFO) << "Connect to destination success for client-" << clientID;
         }
         else
         {
-            Request::replyForError(inConn, Request::REPLY_SERVER_FAILURE);
+            Request::replyForError(tunnel->cryptor(), inConn, Request::REPLY_SERVER_FAILURE);
             delete tunnel;
         }
     }
@@ -354,7 +354,7 @@ Request::State Request::handleConnect(const Address &address)
     
     if (outConn == nullptr)
     {
-        replyForError(inConn_, REPLY_SERVER_FAILURE);
+        replyForError(cryptor_, inConn_, REPLY_SERVER_FAILURE);
         return State::error;
     }
     
@@ -384,15 +384,15 @@ Request::State Request::handleConnect(const Address &address)
 
         if (err == ENETUNREACH)
         {
-            replyForError(inConn_, REPLY_NETWORK_UNREACHABLE);
+            replyForError(cryptor_, inConn_, REPLY_NETWORK_UNREACHABLE);
         }
         else if (err == ECONNREFUSED)
         {
-            replyForError(inConn_, REPLY_CONNECTIONREFUSED);
+            replyForError(cryptor_, inConn_, REPLY_CONNECTIONREFUSED);
         }
         else
         {
-            replyForError(inConn_, REPLY_HOST_UNREACHABLE);
+            replyForError(cryptor_, inConn_, REPLY_HOST_UNREACHABLE);
         }
         
         return State::error;            
