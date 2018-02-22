@@ -132,7 +132,7 @@ unsigned short Address::portNetworkOrder() const
 std::array<unsigned char, 2> Address::rawPortNetworkOrder() const
 {
     auto networkOrder = portNetworkOrder();
-    auto ptr = reinterpret_cast<unsigned char *>(networkOrder);
+    auto ptr = reinterpret_cast<unsigned char *>(&networkOrder);
     
     return {{ *ptr, *(ptr + 1) }};
 }

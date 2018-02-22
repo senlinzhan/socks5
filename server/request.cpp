@@ -124,7 +124,8 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
 
         std::array<unsigned char, 4> rawAddr;        
         std::copy(data->begin() + 4, data->begin() + 8, rawAddr.data());
-        std::copy(data->begin() + 8, data->end(), &port);        
+        std::copy(data->begin() + 8, data->end(),
+                  reinterpret_cast<unsigned char *>(&port));
 
         address = Address(rawAddr, port);
     }
@@ -141,7 +142,8 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
         
         std::array<unsigned char, 16> rawAddr;
         std::copy(data->begin() + 4, data->begin() + 20, rawAddr.data());
-        std::copy(data->begin() + 20, data->end(), &port);
+        std::copy(data->begin() + 20, data->end(),
+                  reinterpret_cast<unsigned char *>(&port));
         
         address = Address(rawAddr, port);
     }
@@ -164,7 +166,9 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
 
         std::string domain(domainLength, '\0');
         std::copy(data->begin() + 5, data->begin() + 5 + domainLength, &domain[0]);
-        std::copy(data->begin() + 5 + domainLength, data->end(), &port);
+        
+        std::copy(data->begin() + 5 + domainLength, data->end(),
+                  reinterpret_cast<unsigned char *>(&port));
         
         address = Address(domain, port);
     }
@@ -206,9 +210,8 @@ void Request::sendReply(const Cryptor &cryptor, bufferevent *inConn, unsigned ch
     if (address.type() == Address::Type::ipv4)
     {
         reply[3] = ADDRESS_TYPE_IPV4;
-
         cryptor.encryptTo(inConn, reply, 4);
-        
+
         auto ip = address.toRawIPv4();
         auto port = address.rawPortNetworkOrder();
 
@@ -295,15 +298,14 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
     {
         return;
     }
-
+    
     int outConnFd = bufferevent_getfd(outConn);
     auto inConn = tunnel->inConnection();
     int clientID = tunnel->clientID();
     
     if (what & BEV_EVENT_CONNECTED)
-    {       
+    {
         Address addr = getSocketLocalAddress(outConnFd);
-        
         if (addr.type() == Address::Type::ipv4 ||
             addr.type() == Address::Type::ipv6)
         {
