@@ -20,7 +20,8 @@ class Cryptor
 public:
     static constexpr int KEY_SIZE    = 32;
     static constexpr int BLOCK_SIZE  = 16;
-
+    static constexpr int LEN_BYTES   = 4;
+    
     static void contextDeleter(EVP_CIPHER_CTX *ctx)
     {
         EVP_CIPHER_CTX_free(ctx);
@@ -84,9 +85,17 @@ public:
     /**
        Remove data from conn and return the data
      **/
-    Buffer removeFrom(bufferevent *conn) const;
+    void removeFrom(bufferevent *conn) const;
+    
+private:
+    int lengthOfEncryptedData(const Buffer &buff) const;
 
-private:    
+    int lengthOfInput(bufferevent *inConn) const
+    {
+        auto inBuff = bufferevent_get_input(inConn);
+        return evbuffer_get_length(inBuff);    
+    }
+    
     Key  key_;
     IV   iv_;
 };

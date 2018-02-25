@@ -2,6 +2,9 @@
 
 #include <assert.h>
 
+#include <iomanip> // This might be necessary
+#include <iostream>
+
 #include <glog/logging.h>
 
 #include <event2/buffer.h>
@@ -128,5 +131,21 @@ void Connection::encryptTransfer()
 
 void Connection::decryptTransfer()
 {
+    auto buffer = cryptor_.readFrom(outConn_);    
+    auto a = cryptor_.decrypt(buffer.data(), buffer.size());
+    if (a != nullptr)
+    {
+        std::cerr << "Content: " << std::hex;    
+        for (auto c: *a)
+        {
+            std::cerr << int(c) << " ";
+        }
+        std::cerr << std::endl;    
+    }
+    else
+    {
+        std::cerr << "ERROR" << std::endl;
+    }
+    
     cryptor_.decryptTransfer(outConn_, inConn_);
 }

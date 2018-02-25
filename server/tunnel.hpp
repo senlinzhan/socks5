@@ -58,6 +58,22 @@ public:
     {
         return cryptor_;
     }
+
+    void encryptTransfer()
+    {
+        assert(inConn_ != nullptr);        
+        assert(outConn_ != nullptr);
+        
+        cryptor_.encryptTransfer(outConn_, inConn_);
+    }
+    
+    void decryptTransfer()
+    {
+        assert(inConn_ != nullptr);        
+        assert(outConn_ != nullptr);
+        
+        cryptor_.decryptTransfer(inConn_, outConn_);
+    }
     
 private:
     Config                  config_;

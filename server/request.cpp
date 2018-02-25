@@ -6,6 +6,9 @@
 #include <array>
 #include <algorithm>
 
+#include <iomanip> // This might be necessary
+#include <iostream>
+
 #include <glog/logging.h>
 
 #include <event2/event.h>
@@ -165,8 +168,7 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
         }
 
         std::string domain(domainLength, '\0');
-        std::copy(data->begin() + 5, data->begin() + 5 + domainLength, &domain[0]);
-        
+        std::copy(data->begin() + 5, data->begin() + 5 + domainLength, &domain[0]);   
         std::copy(data->begin() + 5 + domainLength, data->end(),
                   reinterpret_cast<unsigned char *>(&port));
         
@@ -206,40 +208,40 @@ void Request::sendReply(const Cryptor &cryptor, bufferevent *inConn, unsigned ch
     reply[0] = SOCKS5_VERSION;
     reply[1] = code;
     reply[2] = 0x00;
+
+    std::vector<unsigned char> data;
+    std::array<unsigned char, 2> port;
     
     if (address.type() == Address::Type::ipv4)
     {
-        reply[3] = ADDRESS_TYPE_IPV4;
-        cryptor.encryptTo(inConn, reply, 4);
-
+        reply[3] = ADDRESS_TYPE_IPV4;        
         auto ip = address.toRawIPv4();
-        auto port = address.rawPortNetworkOrder();
-
-        cryptor.encryptTo(inConn, ip.data(), ip.size());
-        cryptor.encryptTo(inConn, port.data(), port.size());
+        port = address.rawPortNetworkOrder();
+        
+        data.insert(data.end(), std::begin(reply), std::end(reply));
+        data.insert(data.end(), std::begin(ip), std::end(ip));
     }
     else if (address.type() == Address::Type::ipv6)
     {
         reply[3] = ADDRESS_TYPE_IPV6;
-        cryptor.encryptTo(inConn, reply, 4);
-
         auto ip = address.toRawIPv6();
-        auto port = address.rawPortNetworkOrder();
+        port = address.rawPortNetworkOrder();
         
-        cryptor.encryptTo(inConn, ip.data(), ip.size());
-        cryptor.encryptTo(inConn, port.data(), port.size());
+        data.insert(data.end(), std::begin(reply), std::end(reply));
+        data.insert(data.end(), std::begin(ip), std::end(ip));
     }
     else
     {
-        reply[3] = ADDRESS_TYPE_IPV4;
-        cryptor.encryptTo(inConn, reply, 4);
-        
+        reply[3] = ADDRESS_TYPE_IPV4;        
         std::array<unsigned char, 4> ip = {{ 0, 0, 0, 0 }};
-        std::array<unsigned char, 2> port = {{ 0, 0 }};
+        port = {{ 0, 0 }};
         
-        cryptor.encryptTo(inConn, ip.data(), ip.size());
-        cryptor.encryptTo(inConn, port.data(), port.size());
+        data.insert(data.end(), std::begin(reply), std::end(reply));
+        data.insert(data.end(), std::begin(ip), std::end(ip));
     }
+
+    data.insert(data.end(), std::begin(port), std::end(port));    
+    cryptor.encryptTo(inConn, data.data(), data.size());            
 }
 
 /**
@@ -282,13 +284,17 @@ static void outConnReadCallback(bufferevent *outConn, void *arg)
         LOG(ERROR) << "inConnReadCallback receive invalid arguments";        
         return;
     }
-    
-    auto input = bufferevent_get_input(outConn);
-    auto output = bufferevent_get_output(tunnel->inConnection());
 
     LOG(INFO) << "Transfer data from server to client-" << tunnel->clientID();
+    auto buff = tunnel->cryptor().readFrom(outConn);
+    std::cerr << "Content: " << std::hex;    
+    for (auto c: buff)
+    {
+        std::cerr << int(c) << " ";
+    }
+    std::cerr << std::endl;    
     
-    evbuffer_add_buffer(output, input);
+    tunnel->encryptTransfer();
 }
 
 static void outConnEventCallback(bufferevent *outConn, short what, void *arg)

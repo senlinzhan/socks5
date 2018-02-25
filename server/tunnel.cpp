@@ -121,10 +121,8 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
     }
     else if (tunnel->state() == Tunnel::State::connected)
     {
-        auto outConn = tunnel->outConnection();        
-        bufferevent_read_buffer(inConn, bufferevent_get_output(outConn));
-        
-        LOG(INFO) << "Transfer data from client-" << clientID << " to server";
+        LOG(INFO) << "Transfer data from client-" << clientID << " to server";   
+        tunnel->decryptTransfer();
     }
     else if (tunnel->state() == Tunnel::State::clientMustClose)
     {

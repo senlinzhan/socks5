@@ -43,6 +43,13 @@ TEST_F(CipherTest, EncryptAndDecrypt)
 
     Cryptor::Buffer buffer(text, text + length);
     EXPECT_EQ(*decrypted, buffer);
+
+
+    std::array<unsigned char, 2> data {{0x05, 0x04}};
+    encrypted = cryptor_.encrypt(data.data(), data.size());
+
+    EXPECT_NE(encrypted, nullptr);
+    EXPECT_GE(encrypted->size(), data.size());    
 }
 
 int main(int argc, char **argv)
