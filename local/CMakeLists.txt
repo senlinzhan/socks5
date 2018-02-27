@@ -9,8 +9,8 @@ find_package (glog REQUIRED)
 
 set(SRCS
     main.cpp
-    local.cpp
-    conn.cpp
+    server.cpp
+    tunnel.cpp
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

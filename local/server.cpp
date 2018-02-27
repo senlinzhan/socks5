@@ -7,9 +7,9 @@
  *
  ******************************************************************************/
 
-#include "local.hpp"
+#include "server.hpp"
 #include "sockets.hpp"
-#include "conn.hpp"
+#include "tunnel.hpp"
 
 #include <event2/dns.h> 
 #include <glog/logging.h>
@@ -21,19 +21,19 @@
 /**
    Called when the server accept new connection
  **/
-static void acceptCallback(evconnlistener *listener, evutil_socket_t fd,
+static void acceptCallback(evconnlistener *listener, evutil_socket_t inConnFd,
                            sockaddr *address, int socklen, void *arg)
 {
     Address addr(address);
     if (addr.type() == Address::Type::unknown)
     {
-        LOG(ERROR) << "Accept new connection from: unknown address";
+        LOG(ERROR) << "Address of Client-" << inConnFd << " is unknown";
         return;
     }
     LOG(INFO) << "Accept new connection from: " << addr;
-
-    auto local = static_cast<Local *>(arg);
-    local->createConnection(fd);
+    
+    auto server = static_cast<Server *>(arg);
+    server->createTunnel(inConnFd);
 }
 
 /**
@@ -53,9 +53,9 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
     event_base_loopexit(base, nullptr); 
 }
 
-Local::Local(const std::string &host, unsigned short port,
-             const std::string &remoteHost, unsigned short remotePort,
-             const std::string &key)
+Server::Server(const std::string &host, unsigned short port,
+               const std::string &remoteHost, unsigned short remotePort,
+               const std::string &key)
     : base_(nullptr),
       listener_(nullptr),
       dns_(nullptr),
@@ -66,22 +66,23 @@ Local::Local(const std::string &host, unsigned short port,
     base_ = event_base_new();    
     if (base_ == nullptr)
     {
-        LOG(FATAL) << "failed to create event_base";
+        LOG(FATAL) << "Failed to create the event_base";
     }
 
     dns_ = evdns_base_new(base_, EVDNS_BASE_INITIALIZE_NAMESERVERS);
     if (dns_ == nullptr)
     {
-        LOG(FATAL) << "failed to create dns resolver";        
+        LOG(FATAL) << "Failed to create the dns resolver";        
     }
     
     int listeningSocket = createListeningSocket(host, std::to_string(port));    
     if (listeningSocket == -1)
     {
-        LOG(FATAL) << "failed to create listening socket";
+        int err = EVUTIL_SOCKET_ERROR();        
+        LOG(FATAL) << "Failed to create listening socket: "
+                   << evutil_socket_error_to_string(err);
     }
-
-    LOG(INFO) << "Create listening socket - " << listeningSocket;
+    LOG(INFO) << "Create listening socket-" << listeningSocket;
     
     listener_ = evconnlistener_new(
         base_,
@@ -95,14 +96,14 @@ Local::Local(const std::string &host, unsigned short port,
     if (listener_ == nullptr)
     {
         int err = EVUTIL_SOCKET_ERROR();
-        LOG(FATAL) << "failed to create listener: "
+        LOG(FATAL) << "Failed to create listener: "
                    << evutil_socket_error_to_string(err);
     }
 
     evconnlistener_set_error_cb(listener_, acceptErrorCallback);    
 }
 
-Local::~Local()
+Server::~Server()
 {
     evconnlistener_free(listener_);
     evdns_base_free(dns_, 1);     
@@ -112,12 +113,12 @@ Local::~Local()
 /**
    Run the event loop
  **/
-void Local::run()
+void Server::run()
 {
     event_base_dispatch(base_);    
 }
 
-void Local::createConnection(int inConnFd)
+void Server::createTunnel(int inConnFd)
 {
-    new Connection(base_, dns_, inConnFd, remoteHost_, remotePort_, key_);
+    new Tunnel(base_, dns_, inConnFd, remoteHost_, remotePort_, key_);
 }
