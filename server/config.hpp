@@ -34,6 +34,11 @@ public:
         return host_;
     }
 
+    std::string portStr() const
+    {
+        return std::to_string(port_);
+    }
+    
     unsigned short port() const
     {
         return port_;

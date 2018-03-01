@@ -17,7 +17,9 @@ public:
     enum class State { incomplete, success, failed, error, waitUserPassAuth };
     
     Auth(const Cryptor &cryptor, bufferevent *inConn);
-    Auth(const Cryptor &cryptor, bufferevent *inConn, const std::string &username, const std::string &password);
+
+    Auth(const Cryptor &cryptor, bufferevent *inConn,
+         const std::string &username, const std::string &password);
     
     // disable the copy operations    
     Auth(const Auth &) = delete;

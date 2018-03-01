@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 Address::Address()
     : type_(Type::unknown)
@@ -109,7 +110,7 @@ std::array<unsigned char, 4> Address::toRawIPv4() const
     assert(type_ == Type::ipv4);
 
     std::array<unsigned char, 4> address;    
-    ::inet_pton(AF_INET, host_.c_str(), &address[0]);
+    ::inet_pton(AF_INET, host_.c_str(), address.data());
     
     return address;
 }
@@ -119,7 +120,7 @@ std::array<unsigned char, 16> Address::toRawIPv6() const
     assert(type_ == Type::ipv6);
 
     std::array<unsigned char, 16> address;
-    ::inet_pton(AF_INET6, host_.c_str(), &address[0]);    
+    ::inet_pton(AF_INET6, host_.c_str(), address.data());    
     
     return address;    
 }
@@ -130,9 +131,11 @@ unsigned short Address::portNetworkOrder() const
 }
 
 std::array<unsigned char, 2> Address::rawPortNetworkOrder() const
-{
-    auto networkOrder = portNetworkOrder();
-    auto ptr = reinterpret_cast<unsigned char *>(&networkOrder);
+{    
+    std::array<unsigned char, 2> result;
     
-    return {{ *ptr, *(ptr + 1) }};
+    auto networkOrder = portNetworkOrder();
+    memcpy(result.data(), &networkOrder, 2);
+
+    return result;
 }

@@ -10,14 +10,9 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include <string>
+#include "base.hpp"
 
-/**
-   Forward declaration
- **/
-struct event_base;
-struct evconnlistener;
-struct evdns_base;
+#include <string>
 
 class Server
 {
@@ -26,21 +21,18 @@ public:
            const std::string &remoteHost, unsigned short remotePort,
            const std::string &key);
     
-    ~Server();
-    
     // disable the copy operations    
     Server(const Server &) = delete;
     Server &operator=(const Server &) = delete;
 
+    // create tunnel between the client and the proxy server
     void createTunnel(int inConnFd);
     
     // run the event loop
     void run();
     
 private:
-    event_base        *base_;           // event loop
-    evconnlistener    *listener_;       // tcp listener
-    evdns_base        *dns_;            // dns resolver
+    ServerBase        base_;
     
     std::string       remoteHost_;      // hostname of the proxy server
     unsigned short    remotePort_;      // listening port of the proxy server

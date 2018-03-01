@@ -60,6 +60,7 @@ public:
     // Return port in network byte order
     unsigned short portNetworkOrder() const;
 
+    // Return bytes representation of port
     std::array<unsigned char, 2> rawPortNetworkOrder() const;
     
 private:

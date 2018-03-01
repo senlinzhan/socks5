@@ -10,41 +10,27 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "base.hpp"
 #include "config.hpp"
-
-#include <gflags/gflags.h>
-
-/**
-   Forward declaration
- **/
-struct event_base;
-struct evconnlistener;
-struct evdns_base;
 
 class Server
 {
 public:
     Server(const Config &config);
-    ~Server();
 
     // disable the copy operations
     Server(const Server &) = delete;
     Server &operator=(const Server &) = delete;
 
+    // create the tunnel between the local server and the proxy server
+    void createTunnel(int inConnFd);
+    
     // run the event loop
     void run();
 
-    // Return configuration
-    Config config() const;
-
-    // Return DNS resolver 
-    evdns_base *dns() const;
-
 private:
     Config            config_;
-    event_base        *base_;           // event loop
-    evconnlistener    *listener_;       // tcp listener
-    evdns_base        *dns_;            // dns resolver
+    ServerBase        base_;
 };
 
 #endif /* SERVER_H */

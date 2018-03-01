@@ -8,35 +8,27 @@
  ******************************************************************************/
 
 #include "address.hpp"
-#include "sockets.hpp"
 #include "server.hpp"
 #include "tunnel.hpp"
 
-#include <event2/dns.h>
-#include <event2/listener.h>
-
 #include <glog/logging.h>
-#include <arpa/inet.h>
 
 /**
    Called when the server accept new connection
  **/
-static void acceptCallback(evconnlistener *listener, evutil_socket_t fd,
+static void acceptCallback(evconnlistener *listener, evutil_socket_t inConnFd,
                            sockaddr *address, int socklen, void *arg)
 {
     Address addr(address);
     if (addr.type() == Address::Type::unknown)
     {
-        LOG(ERROR) << "Accept new connection from: unknown address";
+        LOG(ERROR) << "Address of Client-" << inConnFd << " is unknown";
         return;
     }
-
     LOG(INFO) << "Accept new connection from: " << addr;
-
-    auto base = evconnlistener_get_base(listener);
+    
     auto server = static_cast<Server *>(arg);
-     
-    new Tunnel(server->config(), base, server->dns(), fd);       
+    server->createTunnel(inConnFd);
 }
 
 /**
@@ -58,52 +50,8 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 
 Server::Server(const Config &config)
     : config_(config),
-      base_(nullptr),
-      listener_(nullptr),
-      dns_(nullptr)
+      base_(config.host(), config.port(), acceptCallback, acceptErrorCallback)
 {
-    base_ = event_base_new();
-    if (base_ == nullptr)
-    {
-        LOG(FATAL) << "failed to create event_base";
-    }
-    
-    dns_ = evdns_base_new(base_, EVDNS_BASE_INITIALIZE_NAMESERVERS);
-    if (dns_ == nullptr)
-    {
-        LOG(FATAL) << "failed to create dns resolver";        
-    }
-    
-    auto portStr = std::to_string(config.port());
-    int listeningSocket = createListeningSocket(
-        config.host().c_str(),
-        portStr.c_str()
-    );
-    
-    if (listeningSocket == -1)
-    {
-        LOG(FATAL) << "failed to create listening socket";
-    }
-
-    LOG(INFO) << "Create listening socket - " << listeningSocket;
-    
-    listener_ = evconnlistener_new(
-        base_,
-        acceptCallback,
-        this,
-        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_EXEC,
-        -1,
-        listeningSocket
-    );
-
-    if (listener_ == nullptr)
-    {
-        int err = EVUTIL_SOCKET_ERROR();
-        LOG(FATAL) << "failed to create listener: "
-                   << evutil_socket_error_to_string(err);
-    }
-
-    evconnlistener_set_error_cb(listener_, acceptErrorCallback);
 } 
 
 /**
@@ -111,22 +59,10 @@ Server::Server(const Config &config)
  **/
 void Server::run()
 {
-    event_base_dispatch(base_);    
+    base_.run();
 }
 
-Server::~Server()
+void Server::createTunnel(int inConnFd)
 {
-    evconnlistener_free(listener_);
-    evdns_base_free(dns_, 1); 
-    event_base_free(base_);    
-}
-
-Config Server::config() const
-{
-    return config_;
-}
-
-evdns_base *Server::dns() const
-{
-    return dns_;
+    new Tunnel(config_, base_.base(), base_.dns(), inConnFd);    
 }

@@ -7,16 +7,11 @@
  *
  ******************************************************************************/
 
+#include "address.hpp"
 #include "server.hpp"
-#include "sockets.hpp"
 #include "tunnel.hpp"
 
-#include <event2/dns.h> 
 #include <glog/logging.h>
-
-#include <event2/listener.h>
-#include <event2/dns.h>
-#include <event2/bufferevent.h>
 
 /**
    Called when the server accept new connection
@@ -56,58 +51,11 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 Server::Server(const std::string &host, unsigned short port,
                const std::string &remoteHost, unsigned short remotePort,
                const std::string &key)
-    : base_(nullptr),
-      listener_(nullptr),
-      dns_(nullptr),
+    : base_(host, port, acceptCallback, acceptErrorCallback),
       remoteHost_(remoteHost),
       remotePort_(remotePort),
       key_(key)
 {
-    base_ = event_base_new();    
-    if (base_ == nullptr)
-    {
-        LOG(FATAL) << "Failed to create the event_base";
-    }
-
-    dns_ = evdns_base_new(base_, EVDNS_BASE_INITIALIZE_NAMESERVERS);
-    if (dns_ == nullptr)
-    {
-        LOG(FATAL) << "Failed to create the dns resolver";        
-    }
-    
-    int listeningSocket = createListeningSocket(host, std::to_string(port));    
-    if (listeningSocket == -1)
-    {
-        int err = EVUTIL_SOCKET_ERROR();        
-        LOG(FATAL) << "Failed to create listening socket: "
-                   << evutil_socket_error_to_string(err);
-    }
-    LOG(INFO) << "Create listening socket-" << listeningSocket;
-    
-    listener_ = evconnlistener_new(
-        base_,
-        acceptCallback,
-        this,
-        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_EXEC,
-        -1,
-        listeningSocket
-    );
-    
-    if (listener_ == nullptr)
-    {
-        int err = EVUTIL_SOCKET_ERROR();
-        LOG(FATAL) << "Failed to create listener: "
-                   << evutil_socket_error_to_string(err);
-    }
-
-    evconnlistener_set_error_cb(listener_, acceptErrorCallback);    
-}
-
-Server::~Server()
-{
-    evconnlistener_free(listener_);
-    evdns_base_free(dns_, 1);     
-    event_base_free(base_);    
 }
 
 /**
@@ -115,10 +63,11 @@ Server::~Server()
  **/
 void Server::run()
 {
-    event_base_dispatch(base_);    
+    base_.run();
 }
 
 void Server::createTunnel(int inConnFd)
 {
-    new Tunnel(base_, dns_, inConnFd, remoteHost_, remotePort_, key_);
+    new Tunnel(base_.base(), base_.dns(), inConnFd,
+               remoteHost_, remotePort_, key_);
 }
