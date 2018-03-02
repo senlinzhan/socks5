@@ -27,14 +27,30 @@ public:
     
     explicit Address(struct sockaddr *address);
 
-    // Constructor for IPv4 Raw Address
-    Address(const std::array<unsigned char, 4> &address, unsigned short port);
+    /**
+       Constructor for IPv4 Raw Address,
+       both host and port are in network byte orders
+    **/
+    Address(const std::array<unsigned char, 4> &host, unsigned short port);
 
-    // Constructor for IPv6 Raw Address
-    Address(const std::array<unsigned char, 16> &address, unsigned short port);
+    /**
+       Constructor for IPv6 Raw Address,
+       both host and port are in network byte orders
+    **/
+    Address(const std::array<unsigned char, 16> &host, unsigned short port);
     
-    // Constructor for domain name
+    /** 
+        Constructor for domain name,
+        port in network byte orders
+     **/
     Address(const std::string &domain, unsigned short port);
+
+    /**
+       Factory constructor,
+       note: both host and port are in host byte orders
+    **/
+    static Address ConstructFromHostOrder(Type type, const std::string &host,
+                                          unsigned short port);
     
     // Return ip address or domain name
     std::string host() const;

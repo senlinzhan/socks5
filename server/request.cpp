@@ -6,9 +6,6 @@
 #include <array>
 #include <algorithm>
 
-#include <iomanip> // This might be necessary
-#include <iostream>
-
 #include <glog/logging.h>
 
 #include <event2/event.h>

@@ -82,3 +82,91 @@ void ServerBase::run()
 {
     event_base_dispatch(base_);    
 }
+
+bufferevent *ServerBase::acceptConnection(evutil_socket_t inConnFd, DataCallback callback,
+                                          EventCallback eventCallback, void *arg)
+{
+    evutil_make_socket_nonblocking(inConnFd);
+
+    auto inConn = bufferevent_socket_new(base_, inConnFd, BEV_OPT_CLOSE_ON_FREE);
+    if (inConn == nullptr)
+    {
+        int err = EVUTIL_SOCKET_ERROR();        
+        LOG(ERROR) << "Failed to create connection for client-" << inConnFd
+                   << ": " << evutil_socket_error_to_string(err);
+        
+        return nullptr;
+    }
+    
+    bufferevent_setcb(inConn, callback, nullptr, eventCallback, arg);
+    if (bufferevent_enable(inConn, EV_READ|EV_WRITE) != 0)
+    {
+        LOG(ERROR) << "Failed to enable read/write for client-" << inConnFd;
+        return nullptr;
+    }
+
+    return inConn;
+}
+
+bufferevent *ServerBase::createConnection(const Address &address, DataCallback callback,
+                                          EventCallback eventCallback, void *arg)
+{
+    if (address.type() == Address::Type::unknown)
+    {
+        return nullptr;
+    }
+    
+    // create outgoing connection
+    auto outConn = bufferevent_socket_new(
+        base_,
+        -1,
+        BEV_OPT_CLOSE_ON_FREE
+    );
+    if (outConn == nullptr)
+    {
+        int err = EVUTIL_SOCKET_ERROR();
+        LOG(ERROR) << "Failed to create outgoing connection to " << address
+                   << ": " << evutil_socket_error_to_string(err);
+        
+        return nullptr;
+    }
+
+    // setup callbacks
+    bufferevent_setcb(outConn, callback, nullptr, eventCallback, arg);
+
+    int af;
+    if (address.type() == Address::Type::ipv4)
+    {
+        af = AF_INET;
+    }
+    else if (address.type() == Address::Type::ipv6)
+    {
+        af = AF_INET6;
+    }
+    else
+    {
+        af = AF_UNSPEC;
+    }
+
+    // connect to remote server
+    if (bufferevent_socket_connect_hostname(outConn, dns_, af,
+                                            address.host().c_str(),
+                                            address.port()) == -1)
+    {
+        int err = EVUTIL_SOCKET_ERROR();
+        LOG(ERROR) << "Failed to connect the remote server " << address
+                   << ": " << evutil_socket_error_to_string(err);
+        
+        return nullptr;
+    }
+
+    if (bufferevent_enable(outConn, EV_READ | EV_WRITE) != 0)
+    {
+        LOG(ERROR) << "Failed to enable read/write for outgoing connection-"
+                   << bufferevent_getfd(outConn);
+        
+        return nullptr;
+    }
+
+    return outConn;
+}

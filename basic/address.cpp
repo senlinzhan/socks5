@@ -45,22 +45,22 @@ Address::Address(struct sockaddr *address)
     }
 }
 
-Address::Address(const std::array<unsigned char, 4> &address, unsigned short port)
+Address::Address(const std::array<unsigned char, 4> &host, unsigned short port)
     : type_(Type::unknown),
       host_(INET_ADDRSTRLEN, '\0')
 {
-    if (::inet_ntop(AF_INET, &address[0], &host_[0], host_.size()) != nullptr)
+    if (::inet_ntop(AF_INET, host.data(), &host_[0], host_.size()) != nullptr)
     {
         type_ = Type::ipv4;
         port_ = ntohs(port);            
     }
 }
 
-Address::Address(const std::array<unsigned char, 16> &address, unsigned short port)
+Address::Address(const std::array<unsigned char, 16> &host, unsigned short port)
     : type_(Type::unknown),
       host_(INET6_ADDRSTRLEN, '\0')
 {
-    if (::inet_ntop(AF_INET6, &address[0], &host_[0], host_.size()) != nullptr)
+    if (::inet_ntop(AF_INET6, host.data(), &host_[0], host_.size()) != nullptr)
     {
         type_ = Type::ipv6;
         port_ = ntohs(port);            
@@ -72,6 +72,19 @@ Address::Address(const std::string &domain, unsigned short port)
       host_(domain)
 {
     port_ = ntohs(port);
+}
+
+Address Address::ConstructFromHostOrder(Type type, const std::string &host,
+                                        unsigned short port)
+{
+    // TODO: check validation of hostname    
+
+    Address address;
+    address.type_ = type;
+    address.host_ = host;
+    address.port_ = port;
+    
+    return address;
 }
 
 std::string Address::host() const
