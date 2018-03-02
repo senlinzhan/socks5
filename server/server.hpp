@@ -13,6 +13,8 @@
 #include "base.hpp"
 #include "config.hpp"
 
+#include <memory>
+
 class Server
 {
 public:
@@ -29,8 +31,8 @@ public:
     void run();
 
 private:
-    Config            config_;
-    ServerBase        base_;
+    Config                       config_;
+    std::shared_ptr<ServerBase>  base_;
 };
 
 #endif /* SERVER_H */

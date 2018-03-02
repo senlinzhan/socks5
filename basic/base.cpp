@@ -13,7 +13,7 @@
 #include <glog/logging.h>
 
 ServerBase::ServerBase(const Address &address, AcceptCallback callback,
-                       AcceptErrorCallback errorCallback)
+                       AcceptErrorCallback errorCallback, void *arg)
 {
     // create the event loop
     base_ = event_base_new();    
@@ -43,7 +43,7 @@ ServerBase::ServerBase(const Address &address, AcceptCallback callback,
     listener_ = evconnlistener_new(
         base_,
         callback,
-        this,
+        arg,
         LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_EXEC,
         -1,
         listeningSocket

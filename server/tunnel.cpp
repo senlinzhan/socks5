@@ -182,31 +182,18 @@ static void closeOnWriteComplete(bufferevent *bev, void *arg)
 }
 **/
 
-Tunnel::Tunnel(const Config &config, event_base *base, evdns_base *dns, int inConnFd)
+Tunnel::Tunnel(const Config &config, std::shared_ptr<ServerBase> base, int inConnFd)
     : config_(config),
       base_(base),
-      dns_(dns),
       inConnFd_(inConnFd),
       inConn_(nullptr),
       outConn_(nullptr),
       state_(State::init),
       cryptor_(config_.key(), "0000000000000000")
 {
-    evutil_make_socket_nonblocking(inConnFd_);
-
-    inConn_ = bufferevent_socket_new(base_, inConnFd_, BEV_OPT_CLOSE_ON_FREE);
-    if (inConn_ == nullptr)
-    {
-        LOG(ERROR) << "Failed to create connection for client-" << inConnFd_;
-        return;
-    }
-    
-    bufferevent_setcb(inConn_, inConnReadCallback, nullptr, inConnEventCallback, this);
-    if (bufferevent_enable(inConn_, EV_READ|EV_WRITE) != 0)
-    {
-        LOG(ERROR) << "Failed to enable read/write on client-" << inConnFd_;
-        return;
-    }
+    inConn_ = base_->acceptConnection(
+        inConnFd_, inConnReadCallback, inConnEventCallback, this
+    );
 }
 
 int Tunnel::clientID() const
@@ -266,7 +253,7 @@ Request::State Tunnel::handleRequest(bufferevent *inConn)
 {
     assert(inConn == inConn_);
     
-    Request request(cryptor_, dns_, this);
+    Request request(base_, cryptor_, this);
     return request.handleRequest();
 }
 

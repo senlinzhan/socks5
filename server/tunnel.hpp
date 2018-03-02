@@ -12,9 +12,12 @@
 
 #include "address.hpp"
 #include "auth.hpp"
+#include "base.hpp"
 #include "config.hpp"
 #include "cipher.hpp"
 #include "request.hpp"
+
+#include <memory>
 
 /**
    Forward declaration
@@ -33,7 +36,7 @@ public:
         clientMustClose, connected, waitForConnect
     };
     
-    Tunnel(const Config &config, event_base *base, evdns_base *dns, int inConnFd);
+    Tunnel(const Config &config, std::shared_ptr<ServerBase> base, int inConnFd);
     ~Tunnel();
 
     Tunnel(const Tunnel &) = delete;
@@ -76,14 +79,13 @@ public:
     }
     
 private:
-    Config                  config_;
-    event_base              *base_;
-    evdns_base              *dns_;
-    int                     inConnFd_;    
-    bufferevent             *inConn_;
-    bufferevent             *outConn_;
-    State                   state_;
-    Cryptor                 cryptor_;
+    Config                       config_;
+    std::shared_ptr<ServerBase>  base_;
+    int                          inConnFd_;    
+    bufferevent                  *inConn_;
+    bufferevent                  *outConn_;
+    State                        state_;
+    Cryptor                      cryptor_;
 };
 
 #endif /* TUNNEL_H */

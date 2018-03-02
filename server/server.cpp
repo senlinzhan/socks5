@@ -50,7 +50,7 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 
 Server::Server(const Config &config)
     : config_(config),
-      base_(config.address(), acceptCallback, acceptErrorCallback)
+      base_(new ServerBase(config.address(), acceptCallback, acceptErrorCallback, this))
 {
 } 
 
@@ -59,10 +59,10 @@ Server::Server(const Config &config)
  **/
 void Server::run()
 {
-    base_.run();
+    base_->run();
 }
 
 void Server::createTunnel(int inConnFd)
 {
-    new Tunnel(config_, base_.base(), base_.dns(), inConnFd);    
+    new Tunnel(config_, base_, inConnFd);    
 }

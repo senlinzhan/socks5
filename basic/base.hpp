@@ -29,7 +29,7 @@ public:
     using Fd = evutil_socket_t;
     
     ServerBase(const Address &address, AcceptCallback callback,
-               AcceptErrorCallback errorCallback);
+               AcceptErrorCallback errorCallback, void *arg);
     
     ~ServerBase();
 

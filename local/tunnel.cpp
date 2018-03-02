@@ -81,6 +81,7 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
 Tunnel::Tunnel(std::shared_ptr<ServerBase> base, int inConnFd,
                const Address &address, const std::string &key)
     : base_(base),
+      inConnFd_(inConnFd),
       inConn_(nullptr),
       outConn_(nullptr),
       cryptor_(key, "0000000000000000")  // FIXME: use random initialized vector

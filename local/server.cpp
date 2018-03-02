@@ -50,7 +50,7 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 
 Server::Server(const Address &address, const Address &remoteAddress,
                const std::string &key)
-    : base_(new ServerBase(address, acceptCallback, acceptErrorCallback)),
+    : base_(new ServerBase(address, acceptCallback, acceptErrorCallback, this)),
       remoteAddress_(remoteAddress),
       key_(key)
 {

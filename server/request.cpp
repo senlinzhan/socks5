@@ -12,13 +12,14 @@
 #include <event2/dns.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
- 
-Request::Request(const Cryptor &cryptor, evdns_base *dns, Tunnel *tunnel)
-    : cryptor_(cryptor),
-      dns_(dns),
-      tunnel_(tunnel)
-{    
-    assert(dns_ != nullptr);
+
+Request::Request(std::shared_ptr<ServerBase> base, const Cryptor &cryptor,
+                 Tunnel *tunnel)
+    : base_(base),
+      cryptor_(cryptor),
+      tunnel_(tunnel),
+      inConn_(nullptr)
+{
     assert(tunnel_ != nullptr);
 
     inConn_ = tunnel->inConnection();
@@ -348,42 +349,15 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
      State::error        an error occurred   
  **/
 Request::State Request::handleConnect(const Address &address)
-{    
+{
+    
     LOG(INFO) << "Handle connect for client-" << tunnel_->clientID();
-    
-    auto outConn = bufferevent_socket_new(
-        bufferevent_get_base(inConn_),
-        -1,
-        BEV_OPT_CLOSE_ON_FREE
+
+    auto outConn = base_->createConnection(
+        address, outConnReadCallback, outConnEventCallback, tunnel_
     );
-    
+
     if (outConn == nullptr)
-    {
-        replyForError(cryptor_, inConn_, REPLY_SERVER_FAILURE);
-        return State::error;
-    }
-    
-    tunnel_->setOutConnection(outConn);    
-    bufferevent_setcb(outConn, outConnReadCallback, nullptr, outConnEventCallback, tunnel_);
-    bufferevent_enable(outConn, EV_READ | EV_WRITE);
-    
-    int af;
-    if (address.type() == Address::Type::ipv4)
-    {
-        af = AF_INET;
-    }
-    else if (address.type() == Address::Type::ipv6)
-    {
-        af = AF_INET6;
-    }
-    else
-    {
-        af = AF_UNSPEC;
-    }
-    
-    if (bufferevent_socket_connect_hostname(outConn, dns_, af,
-                                            address.host().c_str(),
-                                            address.port()) == -1)
     {
         int err = EVUTIL_SOCKET_ERROR();
 
@@ -397,11 +371,12 @@ Request::State Request::handleConnect(const Address &address)
         }
         else
         {
-            replyForError(cryptor_, inConn_, REPLY_HOST_UNREACHABLE);
+            replyForError(cryptor_, inConn_, REPLY_SERVER_FAILURE);
         }
         
-        return State::error;            
+        return State::error;        
     }
-     
-    return State::success;    
+    
+    tunnel_->setOutConnection(outConn);
+    return State::success;
 }

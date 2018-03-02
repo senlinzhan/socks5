@@ -36,7 +36,8 @@ public:
     
     enum class State {incomplete, success, error};
     
-    Request(const Cryptor &cryptor, evdns_base *dns, Tunnel *tunnel);
+    Request(std::shared_ptr<ServerBase> base, const Cryptor &cryptor,
+            Tunnel *tunnel);
 
     // disable the copy operations
     Request(const Request &) = delete;
@@ -66,10 +67,10 @@ private:
     // Handle UDP ASSOCIATE command
     State handleUDPAssociate();
 
-    Cryptor       cryptor_;
-    evdns_base    *dns_;
-    Tunnel        *tunnel_;
-    bufferevent   *inConn_;
+    std::shared_ptr<ServerBase>  base_;    
+    Cryptor                      cryptor_;
+    Tunnel                       *tunnel_;
+    bufferevent                  *inConn_;
 };
 
 #endif /* REQUEST_H */

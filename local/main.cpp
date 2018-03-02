@@ -32,16 +32,19 @@ DEFINE_int32(port, 5050, "Listening port");
 DEFINE_validator(port, &isValidPort);
 
 // Listening address of the proxy server
-DEFINE_string(remoteHost, "", "Remote host");
+DEFINE_string(remoteHost, "127.0.0.1", "Remote host");
 DEFINE_int32(remotePort, 6060, "Remote port");
 DEFINE_validator(remotePort, &isValidPort);
 
 // Secret key
-DEFINE_string(key, "", "Secret key");
+DEFINE_string(key, "12345678123456781234567812345678", "Secret key");
 DEFINE_validator(key, &isValidSecretKey);
 
 int main(int argc, char *argv[])
 {
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    google::InitGoogleLogging(argv[0]);
+
     auto port = static_cast<unsigned short>(FLAGS_port);
     auto remotePort = static_cast<unsigned short>(FLAGS_remotePort);
 
