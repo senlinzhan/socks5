@@ -10,19 +10,13 @@
 #ifndef TUNNEL_H
 #define TUNNEL_H
 
+#include "base.hpp"
 #include "cipher.hpp"
-
-/**
-   Forward declaration
- **/
-struct  event_base;
-struct  evdns_base;
-struct  bufferevent;
 
 class Tunnel
 {
 public:
-    Tunnel(event_base *base, evdns_base *dns, int inConnFd,
+    Tunnel(std::shared_ptr<ServerBase> base, int inConnFd,
            const std::string &remoteHost, unsigned short remotePort,
            const std::string &key);
 
@@ -45,14 +39,13 @@ public:
     }
     
 private:    
-    event_base      *base_;          // event loop
-    evdns_base      *dns_;           // dns resolver
+    std::shared_ptr<ServerBase>  base_;
+
+    int                          inConnFd_;       // client socket descriptor
+    bufferevent                  *inConn_;        // incoming connection
+    bufferevent                  *outConn_;       // outgoing connection
     
-    int             inConnFd_;       // client socket descriptor
-    bufferevent     *inConn_;        // incoming connection
-    bufferevent     *outConn_;       // outgoing connection
-    
-    Cryptor         cryptor_;
+    Cryptor                      cryptor_;
 };
 
 #endif /* TUNNEL_H */

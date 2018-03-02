@@ -78,61 +78,37 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
     }    
 }
 
-Tunnel::Tunnel(event_base *base, evdns_base *dns, int inConnFd,
+Tunnel::Tunnel(std::shared_ptr<ServerBase> base, int inConnFd,
                const std::string &remoteHost, unsigned short remotePort,
                const std::string &key)
     : base_(base),
-      dns_(dns),
-      inConnFd_(inConnFd),
       inConn_(nullptr),
       outConn_(nullptr),
       cryptor_(key, "0000000000000000")  // FIXME: use random initialized vector
 {
-    evutil_make_socket_nonblocking(inConnFd_);
-    
-    // Create incoming connection
-    inConn_ = bufferevent_socket_new(
-        base_, 
-        inConnFd_, 
-        BEV_OPT_CLOSE_ON_FREE
+    inConn_ = base_->acceptConnection(
+        inConnFd_, inConnReadCallback, inConnEventCallback, this
     );
-    if (inConn_ == nullptr)
-    {
-        int err = EVUTIL_SOCKET_ERROR();                
-        LOG(ERROR) << "Failed to create incoming connection for client-"
-                   << inConnFd_ << ": "<< evutil_socket_error_to_string(err);
-        return;
-    }
-    bufferevent_setcb(inConn_, inConnReadCallback, nullptr, inConnEventCallback, this);
     
-    // Create outgoing connection
-    outConn_ = bufferevent_socket_new(
-        base,
-        -1,
-        BEV_OPT_CLOSE_ON_FREE
-    );
-    if (outConn_ == nullptr)
+    if (inConn_ != nullptr)
     {
-        int err = EVUTIL_SOCKET_ERROR();
-        LOG(ERROR) << "Failed to create outgoing connection for client-"
-                   << inConnFd_ << ": " << evutil_socket_error_to_string(err);
-        return;
+        auto address = Address::ConstructFromHostOrder(
+            Address::Type::ipv4, remoteHost, remotePort
+        );
+        outConn_ = base_->createConnection(
+            address, outConnReadCallback, outConnEventCallback, this
+        );
+        
+        /**
+           if we can't create the outgoing connection,
+           we need to free the incoming connection
+        **/
+        if (outConn_ == nullptr)
+        {
+            bufferevent_free(inConn_);
+            inConn_ = nullptr;
+        }
     }
-    bufferevent_setcb(outConn_, outConnReadCallback, nullptr, outConnEventCallback, this);
-    
-    // Connect to the proxy server
-    if (bufferevent_socket_connect_hostname(outConn_, dns_, AF_INET,
-                                            remoteHost.c_str(), remotePort) == -1)
-    {
-        int err = EVUTIL_SOCKET_ERROR();
-        LOG(ERROR) << "Failed to connect the proxy server for client-"
-                   << inConnFd_ << ": " << evutil_socket_error_to_string(err);
-        return;
-    }
-
-    // Active both connection    
-    bufferevent_enable(inConn_, EV_READ | EV_WRITE);    
-    bufferevent_enable(outConn_, EV_READ | EV_WRITE);    
 }
 
 Tunnel::~Tunnel()

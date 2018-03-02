@@ -51,7 +51,7 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 Server::Server(const std::string &host, unsigned short port,
                const std::string &remoteHost, unsigned short remotePort,
                const std::string &key)
-    : base_(host, port, acceptCallback, acceptErrorCallback),
+    : base_(new ServerBase(host, port, acceptCallback, acceptErrorCallback)),
       remoteHost_(remoteHost),
       remotePort_(remotePort),
       key_(key)
@@ -63,11 +63,10 @@ Server::Server(const std::string &host, unsigned short port,
  **/
 void Server::run()
 {
-    base_.run();
+    base_->run();
 }
 
 void Server::createTunnel(int inConnFd)
 {
-    new Tunnel(base_.base(), base_.dns(), inConnFd,
-               remoteHost_, remotePort_, key_);
+    new Tunnel(base_, inConnFd, remoteHost_, remotePort_, key_);
 }

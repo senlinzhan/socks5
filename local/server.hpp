@@ -12,6 +12,7 @@
 
 #include "base.hpp"
 
+#include <memory>
 #include <string>
 
 class Server
@@ -32,12 +33,12 @@ public:
     void run();
     
 private:
-    ServerBase        base_;
+    std::shared_ptr<ServerBase>   base_;
     
-    std::string       remoteHost_;      // hostname of the proxy server
-    unsigned short    remotePort_;      // listening port of the proxy server
+    std::string                   remoteHost_;      // hostname of the proxy server
+    unsigned short                remotePort_;      // listening port of the proxy server
     
-    std::string       key_;             // secret key
+    std::string                   key_;             // secret key
 };
 
 #endif /* SERVER_H */
