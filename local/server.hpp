@@ -20,8 +20,7 @@ class Server
 {
 public:
     Server(const std::string &host, unsigned short port,
-           const std::string &remoteHost, unsigned short remotePort,
-           const std::string &key);
+           const Address &address, const std::string &key);
     
     // disable the copy operations    
     Server(const Server &) = delete;

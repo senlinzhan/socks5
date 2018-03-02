@@ -49,10 +49,9 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 }
 
 Server::Server(const std::string &host, unsigned short port,
-               const std::string &remoteHost, unsigned short remotePort,
-               const std::string &key)
+               const Address &address, const std::string &key)
     : base_(new ServerBase(host, port, acceptCallback, acceptErrorCallback)),
-      address_(Address::FromHostOrder(Address::Type::ipv4, remoteHost, remotePort)),
+      address_(address),
       key_(key)
 {
 }

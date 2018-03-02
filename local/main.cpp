@@ -7,6 +7,7 @@
  *
  ******************************************************************************/
 
+#include "address.hpp"
 #include "cipher.hpp"
 #include "server.hpp"
 
@@ -43,8 +44,11 @@ int main(int argc, char *argv[])
 {
     auto port = static_cast<unsigned short>(FLAGS_port);
     auto remotePort = static_cast<unsigned short>(FLAGS_remotePort);
-    
-    Server server(FLAGS_host, port, FLAGS_remoteHost, remotePort, FLAGS_key);
+    auto address = Address::FromHostOrder(
+        Address::Type::ipv4, FLAGS_remoteHost, remotePort
+    );
+
+    Server server(FLAGS_host, port, address, FLAGS_key);
     server.run();
     
     return 0;
