@@ -10,6 +10,7 @@
 #ifndef TUNNEL_H
 #define TUNNEL_H
 
+#include "address.hpp"
 #include "base.hpp"
 #include "cipher.hpp"
 
@@ -17,8 +18,7 @@ class Tunnel
 {
 public:
     Tunnel(std::shared_ptr<ServerBase> base, int inConnFd,
-           const std::string &remoteHost, unsigned short remotePort,
-           const std::string &key);
+           const Address &address, const std::string &key);
 
     ~Tunnel();
     

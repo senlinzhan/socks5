@@ -52,8 +52,7 @@ Server::Server(const std::string &host, unsigned short port,
                const std::string &remoteHost, unsigned short remotePort,
                const std::string &key)
     : base_(new ServerBase(host, port, acceptCallback, acceptErrorCallback)),
-      remoteHost_(remoteHost),
-      remotePort_(remotePort),
+      address_(Address::FromHostOrder(Address::Type::ipv4, remoteHost, remotePort)),
       key_(key)
 {
 }
@@ -68,5 +67,5 @@ void Server::run()
 
 void Server::createTunnel(int inConnFd)
 {
-    new Tunnel(base_, inConnFd, remoteHost_, remotePort_, key_);
+    new Tunnel(base_, inConnFd, address_, key_);
 }

@@ -49,8 +49,8 @@ public:
        Factory constructor,
        note: both host and port are in host byte orders
     **/
-    static Address ConstructFromHostOrder(Type type, const std::string &host,
-                                          unsigned short port);
+    static Address FromHostOrder(Type type, const std::string &host,
+                                 unsigned short port);
     
     // Return ip address or domain name
     std::string host() const;

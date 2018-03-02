@@ -79,8 +79,7 @@ static void outConnEventCallback(bufferevent *outConn, short what, void *arg)
 }
 
 Tunnel::Tunnel(std::shared_ptr<ServerBase> base, int inConnFd,
-               const std::string &remoteHost, unsigned short remotePort,
-               const std::string &key)
+               const Address &address, const std::string &key)
     : base_(base),
       inConn_(nullptr),
       outConn_(nullptr),
@@ -92,17 +91,13 @@ Tunnel::Tunnel(std::shared_ptr<ServerBase> base, int inConnFd,
     
     if (inConn_ != nullptr)
     {
-        auto address = Address::ConstructFromHostOrder(
-            Address::Type::ipv4, remoteHost, remotePort
-        );
-        outConn_ = base_->createConnection(
-            address, outConnReadCallback, outConnEventCallback, this
-        );
-        
         /**
            if we can't create the outgoing connection,
            we need to free the incoming connection
         **/
+        outConn_ = base_->createConnection(
+            address, outConnReadCallback, outConnEventCallback, this
+        );        
         if (outConn_ == nullptr)
         {
             bufferevent_free(inConn_);

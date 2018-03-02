@@ -74,8 +74,8 @@ Address::Address(const std::string &domain, unsigned short port)
     port_ = ntohs(port);
 }
 
-Address Address::ConstructFromHostOrder(Type type, const std::string &host,
-                                        unsigned short port)
+Address Address::FromHostOrder(Type type, const std::string &host,
+                               unsigned short port)
 {
     // TODO: check validation of hostname    
 

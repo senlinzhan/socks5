@@ -10,6 +10,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include "address.hpp"
 #include "base.hpp"
 
 #include <memory>
@@ -33,12 +34,9 @@ public:
     void run();
     
 private:
-    std::shared_ptr<ServerBase>   base_;
-    
-    std::string                   remoteHost_;      // hostname of the proxy server
-    unsigned short                remotePort_;      // listening port of the proxy server
-    
-    std::string                   key_;             // secret key
+    std::shared_ptr<ServerBase>   base_;    
+    Address                       address_;  // address of the  proxy server    
+    std::string                   key_;      // secret key
 };
 
 #endif /* SERVER_H */
