@@ -28,8 +28,8 @@ class ServerBase
 public:
     using Fd = evutil_socket_t;
     
-    ServerBase(const std::string &host, unsigned short port,
-               AcceptCallback callback, AcceptErrorCallback errorCallback);
+    ServerBase(const Address &address, AcceptCallback callback,
+               AcceptErrorCallback errorCallback);
     
     ~ServerBase();
 

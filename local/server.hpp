@@ -19,8 +19,8 @@
 class Server
 {
 public:
-    Server(const std::string &host, unsigned short port,
-           const Address &address, const std::string &key);
+    Server(const Address &address, const Address &remoteAddress,
+           const std::string &key);
     
     // disable the copy operations    
     Server(const Server &) = delete;
@@ -33,9 +33,9 @@ public:
     void run();
     
 private:
-    std::shared_ptr<ServerBase>   base_;    
-    Address                       address_;  // address of the  proxy server    
-    std::string                   key_;      // secret key
+    std::shared_ptr<ServerBase>   base_;
+    Address                       remoteAddress_;  // address of the proxy server    
+    std::string                   key_;            // secret key
 };
 
 #endif /* SERVER_H */

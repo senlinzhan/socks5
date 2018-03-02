@@ -48,10 +48,10 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
     event_base_loopexit(base, nullptr); 
 }
 
-Server::Server(const std::string &host, unsigned short port,
-               const Address &address, const std::string &key)
-    : base_(new ServerBase(host, port, acceptCallback, acceptErrorCallback)),
-      address_(address),
+Server::Server(const Address &address, const Address &remoteAddress,
+               const std::string &key)
+    : base_(new ServerBase(address, acceptCallback, acceptErrorCallback)),
+      remoteAddress_(remoteAddress),
       key_(key)
 {
 }
@@ -66,5 +66,5 @@ void Server::run()
 
 void Server::createTunnel(int inConnFd)
 {
-    new Tunnel(base_, inConnFd, address_, key_);
+    new Tunnel(base_, inConnFd, remoteAddress_, key_);
 }

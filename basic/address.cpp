@@ -74,13 +74,25 @@ Address::Address(const std::string &domain, unsigned short port)
     port_ = ntohs(port);
 }
 
-Address Address::FromHostOrder(Type type, const std::string &host,
-                               unsigned short port)
+Address Address::FromHostOrder(const std::string &host, unsigned short port)
 {
-    // TODO: check validation of hostname    
-
+    // TODO: check validation of domain name
+    
     Address address;
-    address.type_ = type;
+    
+    if (isIPv4(host))
+    {
+        address.type_ = Type::ipv4;
+    }
+    else if (isIPv6(host))
+    {
+        address.type_ = Type::ipv6;        
+    }
+    else
+    {
+        address.type_ = Type::domain;
+    }
+
     address.host_ = host;
     address.port_ = port;
     
@@ -95,6 +107,11 @@ std::string Address::host() const
 uint16_t Address::port() const
 {
     return port_;
+}
+
+std::string Address::portString() const
+{
+    return std::to_string(port_);
 }
 
 std::string Address::toString() const
@@ -151,4 +168,16 @@ std::array<unsigned char, 2> Address::rawPortNetworkOrder() const
     memcpy(result.data(), &networkOrder, 2);
 
     return result;
+}
+
+bool Address::isIPv4(const std::string &host)
+{
+    std::array<unsigned char, 4> address;    
+    return ::inet_pton(AF_INET, host.c_str(), address.data()) == 1;    
+}
+
+bool Address::isIPv6(const std::string &host)
+{
+    std::array<unsigned char, 16> address;
+    return ::inet_pton(AF_INET6, host.c_str(), address.data()) == 1;    
 }

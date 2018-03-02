@@ -47,10 +47,10 @@ public:
 
     /**
        Factory constructor,
-       note: both host and port are in host byte orders
+       host can be ipv4 or ipv6 address, or domain name
+       port in host byte orders
     **/
-    static Address FromHostOrder(Type type, const std::string &host,
-                                 unsigned short port);
+    static Address FromHostOrder(const std::string &host, unsigned short port);
     
     // Return ip address or domain name
     std::string host() const;
@@ -58,6 +58,8 @@ public:
     // Return port in host byte order
     std::uint16_t port() const;
 
+    std::string portString() const;
+    
     // Return string representation of host and port
     std::string toString() const;
 
@@ -80,6 +82,12 @@ public:
     std::array<unsigned char, 2> rawPortNetworkOrder() const;
     
 private:
+    // Whether the address is IPv4 address
+    static bool isIPv4(const std::string &host);
+
+    // Whether the address is IPv6 address    
+    static bool isIPv6(const std::string &host);
+    
     Type          type_;
     std::string   host_;
     uint16_t      port_;

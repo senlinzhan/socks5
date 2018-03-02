@@ -12,8 +12,8 @@
 
 #include <glog/logging.h>
 
-ServerBase::ServerBase(const std::string &host, unsigned short port,
-                       AcceptCallback callback, AcceptErrorCallback errorCallback)
+ServerBase::ServerBase(const Address &address, AcceptCallback callback,
+                       AcceptErrorCallback errorCallback)
 {
     // create the event loop
     base_ = event_base_new();    
@@ -30,7 +30,7 @@ ServerBase::ServerBase(const std::string &host, unsigned short port,
     }
 
     // create the listening socket
-    int listeningSocket = createListeningSocket(host, std::to_string(port));    
+    int listeningSocket = createListeningSocket(address.host(), address.portString());
     if (listeningSocket == -1)
     {
         int err = EVUTIL_SOCKET_ERROR();        

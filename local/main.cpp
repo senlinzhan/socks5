@@ -44,11 +44,14 @@ int main(int argc, char *argv[])
 {
     auto port = static_cast<unsigned short>(FLAGS_port);
     auto remotePort = static_cast<unsigned short>(FLAGS_remotePort);
-    auto address = Address::FromHostOrder(
-        Address::Type::ipv4, FLAGS_remoteHost, remotePort
-    );
 
-    Server server(FLAGS_host, port, address, FLAGS_key);
+    // address of the local server
+    auto address = Address::FromHostOrder(FLAGS_host, port);
+
+    // address of the proxy server
+    auto remoteAddress = Address::FromHostOrder(FLAGS_remoteHost, remotePort);
+
+    Server server(address, remoteAddress, FLAGS_key);
     server.run();
     
     return 0;

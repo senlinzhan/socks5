@@ -50,7 +50,7 @@ static void acceptErrorCallback(evconnlistener *listener, void *arg)
 
 Server::Server(const Config &config)
     : config_(config),
-      base_(config.host(), config.port(), acceptCallback, acceptErrorCallback)
+      base_(config.address(), acceptCallback, acceptErrorCallback)
 {
 } 
 

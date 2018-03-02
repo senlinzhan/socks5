@@ -1,5 +1,16 @@
+/*******************************************************************************
+ *
+ * socks5
+ * A C++11 socks5 proxy server based on Libevent 
+ *
+ * Copyright 2018 Senlin Zhan. All rights reserved.
+ *
+ ******************************************************************************/
+
 #ifndef CONFIG_H
 #define CONFIG_H
+
+#include "address.hpp"
 
 #include <assert.h>
 
@@ -15,12 +26,10 @@ public:
     Config(const std::string &host, unsigned short port,
            const std::string &username, const std::string &password,
            const std::string &key)
-        : host_(host),
-          port_(port),
+        : address_(Address::FromHostOrder(host, port)),          
           userPassAuth_(nullptr),
           key_(key)
     {
-        assert(!host_.empty());
         assert(!key_.empty());
         
         if (!username.empty() && !password.empty())
@@ -31,17 +40,17 @@ public:
 
     std::string host() const
     {
-        return host_;
+        return address_.host();
     }
 
     std::string portStr() const
     {
-        return std::to_string(port_);
+        return address_.portString();
     }
     
     unsigned short port() const
     {
-        return port_;
+        return address_.port();
     }
     
     bool useUserPassAuth() const
@@ -68,9 +77,13 @@ public:
         return key_;
     }
     
+    Address address() const
+    {
+        return address_;
+    }
+    
 private:    
-    std::string             host_;
-    unsigned short          port_;
+    Address                 address_;
     std::shared_ptr<Pair>   userPassAuth_;
     std::string             key_;
 };
