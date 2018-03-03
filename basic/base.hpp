@@ -26,8 +26,6 @@ using EventCallback       = bufferevent_event_cb;
 class ServerBase
 {
 public:
-    using Fd = evutil_socket_t;
-    
     ServerBase(const Address &address, AcceptCallback callback,
                AcceptErrorCallback errorCallback, void *arg);
     

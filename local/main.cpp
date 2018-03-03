@@ -54,6 +54,11 @@ int main(int argc, char *argv[])
     // address of the proxy server
     auto remoteAddress = Address::FromHostOrder(FLAGS_remoteHost, remotePort);
 
+    LOG(WARNING) << "Local server options: "
+                 << "Listening address = " << address << ", "
+                 << "Proxy server address = " << remoteAddress << ", "
+                 << "Secret key = " << FLAGS_key;
+    
     Server server(address, remoteAddress, FLAGS_key);
     server.run();
     
