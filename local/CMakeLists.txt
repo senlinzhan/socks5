@@ -1,7 +1,5 @@
 find_package (openssl REQUIRED)
-find_package (gflags REQUIRED)
 
-include_directories (${gflags_INCLUDE_DIR})
 include_directories ("/usr/local/opt/openssl/include" )
 include_directories(${PROJECT_SOURCE_DIR}/basic)
 
