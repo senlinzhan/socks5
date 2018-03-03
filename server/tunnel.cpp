@@ -90,7 +90,7 @@ static void inConnReadCallback(bufferevent *inConn, void *arg)
     }
     else if (tunnel->state() == Tunnel::State::authorized)
     {
-        LOG(INFO) << "Handle Authentication for client-" << clientID;
+        LOG(INFO) << "Handle Request for client-" << clientID;
         
         auto state = tunnel->handleRequest(inConn);
         if (state == Request::State::success)

@@ -7,7 +7,6 @@
 #include <algorithm>
 
 #include <glog/logging.h>
-
 #include <event2/event.h>
 #include <event2/dns.h>
 #include <event2/buffer.h>
@@ -283,15 +282,6 @@ static void outConnReadCallback(bufferevent *outConn, void *arg)
         return;
     }
 
-    LOG(INFO) << "Transfer data from server to client-" << tunnel->clientID();
-    auto buff = tunnel->cryptor().readFrom(outConn);
-    std::cerr << "Content: " << std::hex;    
-    for (auto c: buff)
-    {
-        std::cerr << int(c) << " ";
-    }
-    std::cerr << std::endl;    
-    
     tunnel->encryptTransfer();
 }
 

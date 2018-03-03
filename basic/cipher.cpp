@@ -1,6 +1,8 @@
-#include <iostream>
-
 #include "cipher.hpp"
+
+#include <assert.h>
+
+#include <glog/logging.h>
 
 Cryptor::Cryptor(const std::string &key, const std::string &iv)
 {
@@ -125,25 +127,28 @@ bool Cryptor::decryptTransfer(bufferevent *inConn, bufferevent *outConn) const
         return false;
     }
 
-    auto buff = readFrom(inConn);
-    int length = lengthOfEncryptedData(buff);
-    if (inBuffLength < length + LEN_BYTES)
+    while(lengthOfInput(inConn) > 0)
     {
-        return false;
+        auto buff = readFrom(inConn);
+        int length = lengthOfEncryptedData(buff);
+        if (inBuffLength < length + LEN_BYTES)
+        {
+            return false;
+        }
+        
+        auto decrypted = decrypt(buff.data() + LEN_BYTES, length);
+        if (decrypted == nullptr)
+        {
+            return false;
+        }
+        
+        if (bufferevent_write(outConn, decrypted->data(), decrypted->size()) == -1)
+        {
+            return false;
+        }
+        
+        evbuffer_drain(bufferevent_get_input(inConn), length + LEN_BYTES); 
     }
-
-    auto decrypted = decrypt(buff.data() + LEN_BYTES, length);
-    if (decrypted == nullptr)
-    {
-        return false;
-    }
-    
-    if (bufferevent_write(outConn, decrypted->data(), decrypted->size()) == -1)
-    {
-        return false;
-    }
-
-    evbuffer_drain(bufferevent_get_input(inConn), length + LEN_BYTES);
     
     return true;    
 }
@@ -152,15 +157,19 @@ bool Cryptor::encryptTransfer(bufferevent *inConn, bufferevent *outConn) const
 {
     assert(inConn != nullptr);
     assert(outConn != nullptr);
-
+    
     auto buff = readFrom(inConn);
     if (!encryptTo(outConn, buff.data(), buff.size()))
     {
+        LOG(ERROR) << "Encrypt and transfer data failed: failed to encrypt data";
         return false;
     }
-
+    
+    LOG(INFO) << "Encrypt " << buff.size()
+              << " bytes data and transfer successfully";
+    
     evbuffer_drain(bufferevent_get_input(inConn), buff.size());
-
+    
     return true;
 }
 

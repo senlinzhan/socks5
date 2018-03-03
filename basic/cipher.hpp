@@ -1,8 +1,6 @@
 #ifndef CIPHER_H
 #define CIPHER_H
 
-#include <assert.h>
-
 #include <array>
 #include <memory>
 #include <vector>
