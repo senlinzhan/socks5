@@ -2,10 +2,15 @@ cmake_minimum_required (VERSION 2.8)
 
 project(socks5)
 
-find_package(GTest REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 
-set(SUBDIRS basic local server test thirdparty/gflags thirdparty/glog thirdparty/googletest)
+add_subdirectory(thirdparty/gflags)
+add_subdirectory(thirdparty/glog)
+add_subdirectory(thirdparty/googletest)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(SUBDIRS basic local server test)
  
 foreach(dir ${SUBDIRS})
     add_subdirectory(${dir})
