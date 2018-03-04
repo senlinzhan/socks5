@@ -9,16 +9,24 @@ The Socks5 server has the following features:
 - Support both IPv4 and IPv6
 - Support aes-256-cbc encryption algorithm 
 
-## Future Plan
 Features that will be added in the future:
 - Support for the BIND command
 - Support for the ASSOCIATE command
+- Support other encryption algorithms
 
 ## Build
 Build from source on Ubuntu 16.04:
 ```bash
 # Install packages
 $ sudo apt-get update && sudo apt-get install build-essential libssl-dev cmake -y
+
+# Install Libevent
+$ wget https://github.com/libevent/libevent/releases/download/release-2.1.8-stable/libevent-2.1.8-stable.tar.gz
+$ tar -xzvf libevent-2.1.8-stable.tar.gz
+$ cd libevent-2.1.8-stable
+$ ./configure
+$ make
+$ sudo make install
 
 # Build from source
 $ git clone https://github.com/senlinzhan/socks5.git
@@ -28,3 +36,4 @@ $ mkdir build && cd build
 $ cmake ..
 $ make
 ```
+## Usage

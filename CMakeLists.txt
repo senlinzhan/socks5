@@ -8,9 +8,7 @@ find_package(Threads REQUIRED)
 add_subdirectory(thirdparty/gflags)
 add_subdirectory(thirdparty/glog)
 add_subdirectory(thirdparty/googletest)
-add_subdirectory(thirdparty/libevent)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(SUBDIRS basic local server test)
  
 foreach(dir ${SUBDIRS})
