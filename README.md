@@ -59,6 +59,7 @@ $ ./bin/socks5 \
     -logtostderr                             # log messages to stderr 
 ```
 3. Browser connect to local server(127.0.0.1:5050) through plugins supporting socks5 proxy.
+
 **NOTE**: The local server and the proxy server MUST use the same 32-bit random key.
 ## TODO
 Features that will be added in the future:
