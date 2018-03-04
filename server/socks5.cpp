@@ -29,7 +29,6 @@ static bool isValidSecretKey(const char *flagname, const std::string &value)
 // Listening address of the proxy server
 DEFINE_string(host, "0.0.0.0", "Listening host");
 DEFINE_int32(port, 6060, "Listening port");
-DEFINE_validator(port, &isValidPort);
 
 // Username and password for authentication
 DEFINE_string(username, "", "Username for login <optional>");
@@ -37,10 +36,19 @@ DEFINE_string(password, "", "Password for login <optional>");
 
 // Secret key
 DEFINE_string(key, "12345678123456781234567812345678", "Secret key");
-DEFINE_validator(key, &isValidSecretKey);
 
 int main(int argc, char *argv[])
-{ 
+{
+    if (!gflags::RegisterFlagValidator(&FLAGS_port, &isValidPort))
+    {
+        LOG(FATAL) << "Failed to register port validator";
+    }
+
+    if (!gflags::RegisterFlagValidator(&FLAGS_key, &isValidSecretKey))
+    {
+        LOG(FATAL) << "Failed to register key validator";
+    }
+    
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 

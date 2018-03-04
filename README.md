@@ -15,3 +15,16 @@ Features that will be added in the future:
 - Support for the ASSOCIATE command
 
 ## Build
+Build from source on Ubuntu 16.04:
+```bash
+# Install packages
+$ sudo apt-get update && sudo apt-get install build-essential libssl-dev cmake -y
+
+# Build from source
+$ git clone https://github.com/senlinzhan/socks5.git
+$ cd socks5
+$ git submodule update --init
+$ mkdir build && cd build
+$ cmake ..
+$ make
+```
