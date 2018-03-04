@@ -57,7 +57,7 @@ include_directories(BEFORE SYSTEM ${GLOG_INCLUDE_DIR})
 link_directories(${GLOG_LIB_DIR})
 
 
-set(SUBDIRS basic local server)
+set(SUBDIRS basic local server test)
  
 foreach(dir ${SUBDIRS})
     add_subdirectory(${dir})

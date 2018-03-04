@@ -2,8 +2,6 @@
 
 #include <assert.h>
 
-#include <glog/logging.h>
-
 Cryptor::Cryptor(const std::string &key, const std::string &iv)
 {
     assert(key.size() == KEY_SIZE);
@@ -161,18 +159,13 @@ bool Cryptor::encryptTransfer(bufferevent *inConn, bufferevent *outConn) const
     auto buff = readFrom(inConn);
     if (!encryptTo(outConn, buff.data(), buff.size()))
     {
-        LOG(ERROR) << "Encrypt and transfer data failed: failed to encrypt data";
         return false;
     }
-    
-    LOG(INFO) << "Encrypt " << buff.size()
-              << " bytes data and transfer successfully";
     
     evbuffer_drain(bufferevent_get_input(inConn), buff.size());
     
     return true;
 }
-
 
 bool Cryptor::encryptTo(bufferevent *outConn, const Byte *in, std::size_t inLength) const
 {

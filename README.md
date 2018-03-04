@@ -24,7 +24,7 @@ $ make
 $ sudo make install
 $ sudo ldconfig -v
 $ cd ..
-$ rm -r libevent-2.1.8-stable
+$ rm -r libevent-2.1.8-stable* 
 
 # Build from source
 $ git clone https://github.com/senlinzhan/socks5.git
@@ -35,7 +35,6 @@ $ cmake ..
 $ make
 ```
 ## Usage
-
 ## TODO
 Features that will be added in the future:
 - Support for the BIND command
