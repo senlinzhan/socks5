@@ -38,26 +38,28 @@ $ make
 $ make test
 ```
 ## Usage
-Run local server to accept all client connections:
+1. Run local server to accept all client connections:
 ```bash
 $ ./bin/local \
     -host="0.0.0.0" \                        # local server hostname
     -port=5050 \                             # local server port
     -remoteHost="127.0.0.1" \                # proxy server hostname
     -remotePort=6060 \                       # proxy server port
-    -key=12345678123456781234567812345678    # 32 bytes secret key
+    -key=12345678123456781234567812345678    # 32 bytes random secret key
     -logtostderr                             # log messages to stderr 
 ```
-Run proxy server to accept connections from the local server:
+2. Run proxy server to accept connections from the local server:
 ```bash
 $ ./bin/socks5 \
     -host="0.0.0.0" \                        # proxy server hostname
-    -port=5050 \                             # proxy server port
-    -key=12345678123456781234567812345678    # 32 bytes secret key
+    -port=6060 \                             # proxy server port
+    -key=12345678123456781234567812345678    # 32 bytes random secret key
     -username="admin"                        # username <optional>
     -password="admin"                        # password <optional>	
     -logtostderr                             # log messages to stderr 
 ```
+3. Browser connect to local server(127.0.0.1:5050) through plugins supporting socks5 proxy.
+**NOTE**: The local server and the proxy server MUST use the same 32-bit random key.
 ## TODO
 Features that will be added in the future:
 - Support for the BIND command
