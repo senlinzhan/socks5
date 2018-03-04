@@ -7,4 +7,4 @@ set(SRCS
     sockets.cpp)
 
 add_library (basic ${SRCS})
-target_link_libraries(basic ssl crypto glog::glog event)
+target_link_libraries(basic ssl crypto glog event)

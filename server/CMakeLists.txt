@@ -14,4 +14,4 @@ set(SRCS
 add_executable(socks5 ${SRCS})
 
 link_directories(${PROJECT_BINARY_DIR}/basic)
-target_link_libraries(socks5 event gflags glog::glog basic)
+target_link_libraries(socks5 event gflags glog basic)

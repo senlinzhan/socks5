@@ -12,4 +12,4 @@ set(SRCS
 add_executable(local ${SRCS})
 
 link_directories(${PROJECT_BINARY_DIR}/basic)
-target_link_libraries(local event gflags glog::glog basic)
+target_link_libraries(local event gflags gtest glog basic)

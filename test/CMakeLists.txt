@@ -7,6 +7,6 @@ include_directories(${PROJECT_SOURCE_DIR}/basic)
 add_executable(cipher_test cipher_test.cpp)
 
 target_link_libraries(cipher_test ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(cipher_test basic event glog::glog gtest)
+target_link_libraries(cipher_test gtest basic)
 
 add_test(Test cipher_test)
