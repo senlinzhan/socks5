@@ -149,17 +149,18 @@ Request::State Request::readAddress(unsigned char addressType, Address &address,
     }
     else
     {
-        if (data->size() < 5)
+        int size = data->size();
+        if (size < 5)
         {
             return State::incomplete;
         }        
 
         int domainLength = (*data)[4];
-        if (data->size() < domainLength + 7)
+        if (size < domainLength + 7)
         {
             return State::incomplete;
         }
-        else if (data->size() > domainLength + 7)
+        else if (size > domainLength + 7)
         {
             return State::error;            
         }

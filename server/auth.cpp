@@ -58,7 +58,7 @@ Auth::State Auth::authenticate()
         return State::error;
     }
 
-    auto size = data->size();
+    int size = data->size();
     if (size < 2)
     {
         return State::incomplete;
@@ -123,7 +123,7 @@ Auth::State Auth::validateUsernamePassword()
         return State::error;
     }
 
-    auto size = data->size();
+    int size = data->size();
     if (size < 2)
     {
         return State::incomplete;
