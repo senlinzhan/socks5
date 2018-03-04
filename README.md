@@ -43,7 +43,7 @@ $ make test
 $ ./bin/local \
     -host="0.0.0.0" \                        # local server hostname
     -port=5050 \                             # local server port
-    -remoteHost="127.0.0.1" \                # proxy server hostname
+    -remoteHost="x.x.x.x" \                  # proxy server hostname
     -remotePort=6060 \                       # proxy server port
     -key=12345678123456781234567812345678    # 32 bytes random secret key
     -logtostderr                             # log messages to stderr 
